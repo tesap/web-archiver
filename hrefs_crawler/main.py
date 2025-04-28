@@ -1,5 +1,6 @@
 import requests
 import urllib
+import sys
 
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin, ParseResult
@@ -86,16 +87,44 @@ def write_to_file(filename: str, urls: Iterable[ParseResult]):
 
 
 if __name__ == "__main__":
-    URL = "https://doc.rust-lang.org/nomicon/vec/vec-drain.html"
-    DEPTH = 99
-    FILTER = CrawlFilter(CrawlBaseHost(), CrawlRegexPath("^/nomicon.*$"))
+    import argparse
+    parser = argparse.ArgumentParser(description='Recursively crawl HTTP hrefs by given initial URL')
+    parser.add_argument('url')
+    parser.add_argument('-d', '--depth', type=int, default=1, help='Maximum depth of hrefs to follow')
+    parser.add_argument('-o', '--output', required=True, help='Output file path')
+    parser.add_argument('-q', '--quiet', action="store_true", help='Suppress debug output')
+    parser.add_argument('--filter-host-preserve', action="store_true", help='Crawl within base URL host')
+    parser.add_argument('--filter-host-regex', metavar="STRING", help='Narrow crawling scope by URL host regex')
+    parser.add_argument('--filter-path-regex', metavar="STRING", help='Narrow crawling scope by URL path regex')
+    
+    args = parser.parse_args()
+
+    if args.quiet:
+        import os
+        devnull = open(os.devnull, 'w')
+        sys.stdout = devnull
+    
+    URL = args.url
+    DEPTH = args.depth
+    if args.filter_host_preserve:
+        FILTER_HOST = CrawlBaseHost()
+    elif args.filter_host_regex:
+        FILTER_HOST = CrawlRegexHost(args.filter_host_regex)
+    else:
+        FILTER_HOST = None
+
+    if args.filter_path_regex:
+        FILTER_PATH = CrawlRegexPath(args.filter_path_regex)
+    else:
+        FILTER_PATH = None
+
+    FILTER = CrawlFilter(FILTER_HOST, FILTER_PATH)
     print(FILTER)
 
     l = recursive_obtain_page_hrefs(URL, DEPTH, FILTER)
-    print("LEN: ", len(l))
     l = set(l)
     l = sorted(list(l))
-    print("LEN: ", len(l))
+    print("Crawled URLs: ", len(l))
 
-    write_to_file("out.urls", l)
+    write_to_file(args.output, l)
 
