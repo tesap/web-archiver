@@ -143,6 +143,7 @@ def obtain_page_hrefs(url: str, crawl_filter: CrawlFilter) -> List[ParseResult]:
 
 def recursive_obtain_page_hrefs(url: str, depth, crawl_filter: CrawlFilter):
     result = []
+    url_parsed = urllib.parse.urlparse(url)
 
     if depth <= 0:
         return list()
@@ -151,14 +152,15 @@ def recursive_obtain_page_hrefs(url: str, depth, crawl_filter: CrawlFilter):
 
     if depth == 1:
         result = list(hrefs)
-        print("\tLEAF: ", len(result))
+        result.append(url_parsed)
         return result
 
     for i in hrefs:
-        print(depth, "HREF: ", i.geturl())
+        print(depth, i.geturl())
         children = recursive_obtain_page_hrefs(i.geturl(), depth - 1, crawl_filter)
         result.extend(children)
 
+    result.append(url_parsed)
     return result
 
 def write_to_file(filename: str, urls: Iterable[ParseResult]):
@@ -169,7 +171,7 @@ def write_to_file(filename: str, urls: Iterable[ParseResult]):
 
 if __name__ == "__main__":
     URL = "https://doc.rust-lang.org/nomicon/vec/vec-drain.html"
-    DEPTH = 3
+    DEPTH = 99
     FILTER = CrawlFilter(CrawlBaseHost(), CrawlRegexPath("^/nomicon.*$"))
     print(FILTER)
 
