@@ -1,3 +1,5 @@
+#!/bin/python
+
 import requests
 import urllib
 import sys
