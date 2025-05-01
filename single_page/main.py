@@ -13,7 +13,7 @@ from typing import Iterable
 from urllib.parse import urljoin, urlparse, ParseResult
 
 from cache import cache_by_parsed_url
-from fs_cache import fs_cache_by_url_parsed
+from fs_cache import fs_cache_by_url_parsed, fs_cache_by_url
 from href import HrefType, Href, is_resource 
 from common import \
     file_write, \
@@ -116,6 +116,15 @@ def download_and_inject_hrefs(soup, url: str, out_dir: str):
 
         href.soup_obj[href.key] = get_href_relpath(parsed_url, full_href_parsed)
         
+def main(url: str, out_dir: str):
+    mkdir(out_dir)
+
+    resp = requests.get(url)
+    soup = BeautifulSoup(resp.text, 'html.parser')
+
+    download_and_inject_hrefs(soup, url, out_dir)
+
+    write_url_locally(urlparse(url), out_dir, str(soup).encode())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Download HTTP page by given URL with resources, allowing it to be viewed offline')
@@ -136,12 +145,7 @@ if __name__ == "__main__":
 
     if not FORCE_DOWNLOAD:
         download_url = fs_cache_by_url_parsed(download_url)
+        main = fs_cache_by_url(main)
 
-    mkdir(OUTPUT_DIR)
+    main(URL, OUTPUT_DIR)
 
-    resp = requests.get(URL)
-    soup = BeautifulSoup(resp.text, 'html.parser')
-
-    download_and_inject_hrefs(soup, URL, OUTPUT_DIR)
-
-    write_url_locally(urlparse(URL), OUTPUT_DIR, str(soup).encode())
