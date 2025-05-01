@@ -1,7 +1,11 @@
 import os
+import sys
 
 from pathlib import Path
 from urllib.parse import ParseResult
+
+DEBUG_OUT = sys.stderr
+ERR_OUT = sys.stderr
 
 # ==== FS ====
 def file_write(path: str, data: bytes) -> bool:

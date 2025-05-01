@@ -1,6 +1,8 @@
 import os
+import sys
 
 from urllib.parse import urlparse
+from termcolor import colored
 
 from common import *
 
@@ -13,9 +15,10 @@ def fs_cache_decorator(args_to_filepath):
             path = args_to_filepath(*args, **kwargs)
 
             if file_exists(path):
-                print("CACHE HIT: Filesystem \t->", path)
-                return
+                print(colored(f"CACHE HIT: Filesystem \t-> {path}", "green"), file=DEBUG_OUT)
+                return 
             else:
+                print(colored(f"CACHE Miss: Filesystem \t-> {path}", "red"), file=DEBUG_OUT)
                 return func(*args, **kwargs)
 
         return wrapper

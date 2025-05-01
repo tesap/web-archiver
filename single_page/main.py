@@ -1,4 +1,4 @@
-#!/bin/python
+#!python
 
 import requests
 import re
@@ -20,7 +20,8 @@ from common import \
     mkdir, \
     create_filepath_dirs, \
     get_url_local_path, \
-    get_href_relpath
+    get_href_relpath, \
+    DEBUG_OUT
 
 
 def soup_iter_hrefs(soup) -> Iterable[Href]:
@@ -35,21 +36,21 @@ def soup_iter_hrefs(soup) -> Iterable[Href]:
             yield Href(HrefType.Html, i, 'href', v)
 
     # Extract resources from img tags
-    print("=== IMAGES")
+    print("=== IMAGES", file=DEBUG_OUT)
     for i in soup.find_all('img'):
         v = i.get('src')
         if v:
             yield Href(HrefType.Image, i, 'src', v)
 
     # Extract resources from script tags
-    print("=== SCRIPTS")
+    print("=== SCRIPTS", file=DEBUG_OUT)
     for i in soup.find_all('script'):
         v = i.get('src')
         if v:
             yield Href(HrefType.Script, i, 'src', v)
 
     # Extract resources from link tags
-    print("=== CSS")
+    print("=== CSS", file=DEBUG_OUT)
     for i in soup.find_all('link'):
         v = i.get('href')
         if not v:
@@ -80,7 +81,7 @@ def write_url_locally(parsed_url: ParseResult, out_dir: str, data: bytes):
     
     create_filepath_dirs(path)
 
-    print(url, "\t->", path)
+    print(url, "\t->", path, file=DEBUG_OUT)
     file_write(
         path,
         data
@@ -92,7 +93,7 @@ def download_url(parsed_url: ParseResult, out_dir: str):
     resp = requests.get(url)
 
     if not resp.ok:
-        print("Error retrieving: ", url)
+        print("Error retrieving: ", url, file=ERR_OUT)
         return
 
     write_url_locally(parsed_url, out_dir, resp.content)
@@ -131,14 +132,15 @@ if __name__ == "__main__":
     parser.add_argument('url')
     parser.add_argument('-o', '--output', metavar="PATH", required=True, help='Output directory')
     parser.add_argument('-f', '--force-download', action="store_true", help='Ignore already present files and force their re-download')
-    parser.add_argument('-q', '--quiet', action="store_true", help='Suppress debug output')
+    parser.add_argument('-v', '--verbose', action="store_true", help='Print debug output')
     
     args = parser.parse_args()
 
-    if args.quiet:
-        devnull = open(os.devnull, 'w')
-        sys.stdout = devnull
-    
+    VERBOSE = args.verbose
+
+    if not VERBOSE:
+        DEBUG_OUT = open(os.devnull, 'w')
+
     URL = args.url
     OUTPUT_DIR = args.output
     FORCE_DOWNLOAD = args.force_download
@@ -148,4 +150,6 @@ if __name__ == "__main__":
         main = fs_cache_by_url(main)
 
     main(URL, OUTPUT_DIR)
+
+
 

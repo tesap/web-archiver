@@ -12,7 +12,7 @@ def cache_decorator(args_hash_func, cache_data: Dict):
             cache_key = args_hash_func(*args, **kwargs)
             if cache_key in cache_data:
                 # Return found from cache
-                print("CACHE HIT: Process memory")
+                # print("CACHE HIT: Process memory", file=DEBUG_OUT)
                 return cache_data[cache_key]
             else:
                 # Save to cache
