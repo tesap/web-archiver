@@ -24,8 +24,18 @@ def create_filepath_dirs(path: str):
 
 # ==== URLs ====
 
+def is_url_path_dir(url_parsed: ParseResult) -> bool:
+    p = url_parsed.path
+    rind = p.rindex("/") if "/" in p else 0
+
+    return p[rind:].count(".") == 0
+
 def get_url_local_path(url_parsed: ParseResult, out_dir: str = ""):
-    return os.path.join(out_dir, url_parsed.netloc, url_parsed.path.lstrip("/"))
+    local_path = os.path.join(out_dir, url_parsed.netloc, url_parsed.path.lstrip("/"))
+
+    if is_url_path_dir(url_parsed):
+        local_path = os.path.join(local_path, "index.html")
+    return local_path
 
 def get_href_relpath(cur_parsed: ParseResult, ref_parsed: ParseResult) -> str:
     cur_path = get_url_local_path(cur_parsed)
