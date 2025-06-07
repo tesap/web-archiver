@@ -113,7 +113,10 @@ def download_and_inject_hrefs(soup, url: str, out_dir: str):
             full_href_parsed = parsed_href
 
         if is_resource(href):
-            download_url(full_href_parsed, out_dir)
+            try:
+                download_url(full_href_parsed, out_dir)
+            except Exception as e:
+                print(f"--- Exc: {e}")
 
         href.soup_obj[href.key] = get_href_relpath(parsed_url, full_href_parsed)
         
