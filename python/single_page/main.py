@@ -90,10 +90,14 @@ def write_url_locally(parsed_url: ParseResult, out_dir: str, data: bytes):
 @cache_by_parsed_url
 def download_url(parsed_url: ParseResult, out_dir: str):
     url = parsed_url.geturl()
-    resp = requests.get(url)
+    try:
+        resp = requests.get(url, timeout=3)
+    except requests.exceptions.ConnectionError:
+        print("Error connection")
+        return
 
     if not resp.ok:
-        print("Error retrieving: ", url, file=ERR_OUT)
+        print("Error retrieving: ", url)
         return
 
     write_url_locally(parsed_url, out_dir, resp.content)

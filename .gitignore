@@ -1,5 +1,7 @@
 __pycache__
 resources/
 out/
+.venv
+.old
 *.html
 *.urls

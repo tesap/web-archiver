@@ -11,6 +11,8 @@ from typing import List, Tuple, Set, Iterable
 from cache import cache_by_url
 from crawl_filter import should_crawl_url, CrawlFilter, CrawlRegexPath, CrawlRegexHost, CrawlBaseHost
 
+REQUEST_TIMEOUT=3
+
 def extract_page_hrefs(html_text: str) -> Iterable[str]:
     """
     Parse HTML to get list of raw hrefs
@@ -47,7 +49,11 @@ def parse_page_href(href: str, base_url: str) -> ParseResult:
 def obtain_page_hrefs(url: str, crawl_filter: CrawlFilter) -> List[ParseResult]:
     url_parsed = urllib.parse.urlparse(url)
     # Making GET request
-    resp = requests.get(url)
+    try:
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+    except requests.exceptions.ConnectionError:
+        print("Error connection")
+        return list()
 
     if not resp.ok:
         print(f"ERROR Reteieving {url}: {resp.status_code}")

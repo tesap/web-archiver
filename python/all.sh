@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-# BASE_URL="https://doc.rust-lang.org/nomicon/vec/vec-drain.html"
+BASE_URL="https://lukesmith.xyz/"
 DEPTH=3
 OUT_DIR="out"
 HREFS_LIST_FILE="${OUT_DIR}/out.urls"
@@ -22,6 +22,7 @@ function crawl_url() {
       python single_page/main.py \
           $page_href \
           -o $OUT_DIR \
+          -v 
           # -f
     done
 }
