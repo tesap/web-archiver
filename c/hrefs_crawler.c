@@ -3,14 +3,37 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <getopt.h>
+#include <ctype.h>
 
 #include <curl/curl.h>
 
-#define REQUEST_PERIOD 50000
-#define RESTRICT_TO_DOMAIN 1
-#define RESTRICT_TO_SUBDOMAIN 2
+#define DEFAULT_DEPTH_LEVEL 1
+#define DEFAULT_REQUEST_PERIOD 50
+#define DEFAULT_REQUEST_TIMEOUT 30000
 
-// #define RESTRICTION_ARG RESTRICT_TO_SUBDOMAIN
+typedef enum {
+    DOMAIN_FILTER_NO,
+    DOMAIN_FILTER_SAME,
+    DOMAIN_FILTER_SUBDOMAIN,
+} DomainFilterType;
+
+struct cmd_args {
+    char* root_url;
+    int depth_level;
+    int request_period;
+    int request_timeout;
+    DomainFilterType filter_type;
+};
+
+struct cmd_args cmd_args = {
+    .root_url = "",
+    .depth_level = DEFAULT_DEPTH_LEVEL,
+    .request_period = DEFAULT_REQUEST_PERIOD,
+    .request_timeout = DEFAULT_REQUEST_TIMEOUT,
+    .filter_type = DOMAIN_FILTER_NO,
+};
+
 
 struct vec {
     size_t size;
@@ -99,6 +122,17 @@ end_loop:;
     char* result = capture_vec->ptr;
     free(capture_vec);
     return result;
+}
+
+bool is_number(char* s) {
+    char* i = s;
+    while (*i != '\0') {
+        if (!isdigit((unsigned char)*i)) {
+            return false;
+        }
+        i++;
+    }
+    return true;
 }
 
 bool ends_with(char* str, char* suffix) {
@@ -244,23 +278,24 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
         return;
     }
 
-#ifdef RESTRICTION_ARG
-    char* domain_result_url = capture_domain_from_url(result_url);
-    char* domain_page_url = capture_domain_from_url(page_url);
-#endif
-#if RESTRICTION_ARG == RESTRICT_TO_DOMAIN
-    if (strcmp(domain_page_url, domain_result_url) != 0) {
-        return;
+    if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
+        char* domain_result_url = capture_domain_from_url(result_url);
+        char* domain_page_url = capture_domain_from_url(page_url);
+        if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
+            if (strcmp(domain_page_url, domain_result_url) != 0) {
+                return;
+            }
+        }
+        if (cmd_args.filter_type == DOMAIN_FILTER_SUBDOMAIN) {
+            // Check whether result_url is a subdomain of page_url, f.e.:
+            // domain_result_url =  terms.archlinux.org
+            // domain_page_url =          archlinux.org
+            // Then first is a subdomain of the second
+            if (!ends_with(domain_result_url, domain_page_url)) {
+                return;
+            }
+        }
     }
-#elif RESTRICTION_ARG == RESTRICT_TO_SUBDOMAIN
-    // Check whether result_url is a subdomain of page_url, f.e.:
-    // domain_result_url =  terms.archlinux.org
-    // domain_page_url =          archlinux.org
-    // Then first is a subdomain of the second
-    if (!ends_with(domain_result_url, domain_page_url)) {
-        return;
-    }
-#endif
 
     // Finally print URL to stdout
     printf("%s\n", result_url);
@@ -287,19 +322,111 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx) {
     return realsize;
 }
 
-int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "=== Example: ./hrefs_crawler archlinux.org 3\n");
-        return 1;
+void exit_args_error() {
+    fprintf(stderr, "Usage: ./hrefs_crawler -a <addr> [-d <depth>] [-p <period>] [-t <timeout]\n");
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "\t-a, --address <addr>\tURL the crawler starts from\n");
+    fprintf(stderr, "\t-d, --depth <val>\tLevel of recursion a crawler will dive into hrefs (default: %d)\n", DEFAULT_DEPTH_LEVEL);
+    fprintf(stderr, "\t-p, --period <val>\tPeriod between TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_PERIOD);
+    fprintf(stderr, "\t-t, --timeout <val>\tTimeout for TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_TIMEOUT);
+    fprintf(stderr, "\t--filter-same-domain\tOnly account for URLs with the same domain as the initial URL\n");
+    fprintf(stderr, "\t--filter-subdomain\tOnly account for URLs to subdomains to the domain of the initial URL\n");
+    exit(1);
+}
+
+void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
+    bool a_flag = false;
+    bool d_flag = false;
+    bool p_flag = false;
+    bool t_flag = false;
+
+    while (1) {
+        static struct option long_options[] = {
+            {"address",             required_argument, 0, 'a'},
+            {"depth-level",         required_argument, 0, 'd'},
+            {"request-period",      required_argument, 0, 'p'},
+            {"request-timeout",     required_argument, 0, 't'},
+            {"filter-same-domain",  no_argument, 0, 0},
+            {"filter-subdomain",    no_argument, 0, 0},
+            {0, 0, 0, 0}
+        };
+
+        int longindex;
+        int c = getopt_long(argc, argv, "a:d:p:t:", long_options, &longindex);
+        if (c == -1) {
+            break;
+        }
+
+        switch (c) {
+            case 0:
+                if (strcmp(long_options[longindex].name, "filter-same-domain") == 0) {
+                    args->filter_type = DOMAIN_FILTER_SAME;
+                }
+                if (strcmp(long_options[longindex].name, "filter-subdomain") == 0) {
+                    args->filter_type = DOMAIN_FILTER_SUBDOMAIN;
+                }
+                break;
+            case 'a':
+                if (a_flag) {
+                    exit_args_error();
+                }
+                a_flag = true;
+                args->root_url = optarg;
+                break;
+            case 'd':
+                if (d_flag) {
+                    exit_args_error();
+                }
+                if (!is_number(optarg)) {
+                    fprintf(stderr, "Error: argument is not a number: %s\n", optarg);
+                    exit(1);
+                }
+                d_flag = true;
+                args->depth_level = atoi(optarg);
+                break;
+            case 'p':
+                if (p_flag) {
+                    exit_args_error();
+                }
+                if (!is_number(optarg)) {
+                    fprintf(stderr, "Error: argument is not a number: %s\n", optarg);
+                    exit_args_error();
+                }
+                p_flag = true;
+                args->request_period = atoi(optarg);
+                break;
+            case 't':
+                if (t_flag) {
+                    exit_args_error();
+                }
+                if (!is_number(optarg)) {
+                    fprintf(stderr, "Error: argument is not a number: %s\n", optarg);
+                    exit_args_error();
+                }
+                t_flag = true;
+                args->request_timeout = atoi(optarg);
+                break;
+            case '?':
+                exit_args_error();
+            default:
+                printf("==== default\n");
+        }
     }
-    char* url = strdup(argv[1]);
-    const char* errstr;
-    int depth_level = atoi(argv[2]);
+
+    // Assert required arguments
+    if (!a_flag) {
+        fprintf(stderr, "Address argument is required\n");
+        exit_args_error();
+    }
+}
+
+int main(int argc, char* argv[]) {
+    parse_cmd_args(argc, argv, &cmd_args);
 
     // debug_libcurl_version();
     curl_global_init(CURL_GLOBAL_NOTHING);
 
-    crawl_urls(url, depth_level);
+    crawl_urls(strdup(cmd_args.root_url), cmd_args.depth_level);
 
     curl_global_cleanup();
     return 0;
@@ -319,7 +446,7 @@ void crawl_urls(char* url, int depth_level) {
         return;
     }
 
-    usleep(REQUEST_PERIOD); 
+    usleep(cmd_args.request_period * 1000); 
 
     // Add '/' at end if missing
     int url_len = strlen(url);
@@ -332,7 +459,7 @@ void crawl_urls(char* url, int depth_level) {
     CURL *handle = curl_easy_init();
     // === SETUP ===
     // curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
-    curl_easy_setopt(handle, CURLOPT_TIMEOUT, 5L);
+    curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, cmd_args.request_timeout);
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
     // No larger than 10MB
     curl_easy_setopt(handle, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)10 * 1024 * 1024);
