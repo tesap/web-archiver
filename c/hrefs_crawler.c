@@ -47,13 +47,9 @@ struct vec* vec_init(size_t newsize) {
     return v;
 }
 
-struct vec* vec_deinit(struct vec* v) {
-    if (v && v->ptr) {
-        free(v->ptr);
-    }
-    if (v) {
-        free(v);
-    }
+void vec_deinit(struct vec* v) {
+    free(v->ptr);
+    free(v);
 }
 
 void vec_append(struct vec* v, char* buffer, size_t newsize) {
