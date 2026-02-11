@@ -19,7 +19,7 @@ typedef enum {
 } DomainFilterType;
 
 struct cmd_args {
-    char* root_url;
+    const char* root_url;
     int depth_level;
     int request_period;
     int request_timeout;
@@ -38,10 +38,11 @@ struct cmd_args cmd_args = {
 struct vec {
     size_t size;
     char* ptr;
+    bool allocated;
 };
 
 struct vec* vec_init(size_t newsize) {
-    struct vec* v = malloc(sizeof(struct vec));
+    struct vec* v = (struct vec*)malloc(sizeof(struct vec));
     v->ptr = (char*)malloc(sizeof(char) * newsize);
     v->size = newsize;
     return v;
@@ -52,7 +53,7 @@ void vec_deinit(struct vec* v) {
     free(v);
 }
 
-void vec_append(struct vec* v, char* buffer, size_t newsize) {
+void vec_append(struct vec* v, const char* buffer, size_t newsize) {
     if (newsize <= 0) {
         fprintf(stderr, "Error vec_append: newsize = %d\n", newsize);
         exit(1);
@@ -69,7 +70,7 @@ void vec_append(struct vec* v, char* buffer, size_t newsize) {
         exit(1);
         return;
     }
-    v->ptr = ptr;
+    v->ptr = (char *)ptr;
 
     memcpy((v->ptr + v->size), buffer, newsize);
     v->size += newsize;
@@ -91,7 +92,7 @@ char* capture_domain_from_url(const char* url) {
 
     for (int i = 0; i < strlen(url); i++) {
         char el = url[i];
-        char* el_ptr = url + i;
+        const char* el_ptr = url + i;
         switch (state) {
             case 0:
                 if (strncmp(el_ptr, "://", 3) == 0) {
@@ -107,7 +108,8 @@ char* capture_domain_from_url(const char* url) {
                 } else {
                     vec_append(capture_vec, el_ptr, 1);
                 }
-            default:
+            // default:
+            //     break;
         }
     }
 
@@ -230,8 +232,8 @@ void capture_hrefs_from_html(struct vec* data, const char* page_url, int depth_l
                 }
             }
                 
-            default:
-                // Skip, go on
+            // default:
+            //     Skip, go on
         }
     }
     vec_deinit(capture_vec);
@@ -264,7 +266,7 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
     } else if (is_url_relative(found_url)) {
         char* stripped_found_url = found_url + 1;
         int full_url_len = strlen(page_url) + strlen(stripped_found_url) + 1;
-        char* full_url = malloc(full_url_len * sizeof(char));
+        char* full_url = (char *)malloc(full_url_len * sizeof(char));
         
         sprintf(full_url, "%s%s", page_url, stripped_found_url);
         result_url = full_url;
@@ -313,7 +315,7 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx) {
     size_t realsize = size * nmemb;
 
     struct vec* v = (struct vec*)ctx;
-    vec_append(v, buffer, realsize);
+    vec_append(v, (char *)buffer, realsize);
 
     return realsize;
 }
@@ -447,7 +449,7 @@ void crawl_urls(char* url, int depth_level) {
     // Add '/' at end if missing
     int url_len = strlen(url);
     if (url[url_len-1] != '/') {
-        url = realloc(url, url_len + 2);
+        url = (char* )realloc(url, url_len + 2);
         url[url_len] = '/';
         url[url_len+1] = '\0';
     }
