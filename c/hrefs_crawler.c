@@ -6,7 +6,15 @@
 #include <getopt.h>
 #include <ctype.h>
 
-#include <curl/curl.h>
+// #include <curl/curl.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+// My definitions
+int connect_by_ip(const char* hostname);
+// ===
 
 #define DEFAULT_DEPTH_LEVEL 1
 #define DEFAULT_REQUEST_PERIOD 50
@@ -302,13 +310,13 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
     crawl_urls(result_url, depth_level - 1);
 }
 
-void debug_libcurl_version() {
-    curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
-    printf("libcurl version %u.%u.%u\n",
-        (ver->version_num >> 16) & 0xff,
-        (ver->version_num >> 8) & 0xff,
-        ver->version_num & 0xff);
-}
+// void debug_libcurl_version() {
+//     curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
+//     printf("libcurl version %u.%u.%u\n",
+//         (ver->version_num >> 16) & 0xff,
+//         (ver->version_num >> 8) & 0xff,
+//         ver->version_num & 0xff);
+// }
 
 // size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx);
 size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx) {
@@ -422,11 +430,11 @@ int main(int argc, char* argv[]) {
     parse_cmd_args(argc, argv, &cmd_args);
 
     // debug_libcurl_version();
-    curl_global_init(CURL_GLOBAL_NOTHING);
+    // curl_global_init(CURL_GLOBAL_NOTHING);
 
     crawl_urls(strdup(cmd_args.root_url), cmd_args.depth_level);
 
-    curl_global_cleanup();
+    // curl_global_cleanup();
     return 0;
 }
 
@@ -454,36 +462,49 @@ void crawl_urls(char* url, int depth_level) {
         url[url_len+1] = '\0';
     }
 
-    CURL *handle = curl_easy_init();
-    // === SETUP ===
-    // curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
-    curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, cmd_args.request_timeout);
-    curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
-    // No larger than 10MB
-    curl_easy_setopt(handle, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)10 * 1024 * 1024);
+    // CURL *handle = curl_easy_init();
+    // // === SETUP ===
+    // // curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
+    // curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, cmd_args.request_timeout);
+    // curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
+    // // No larger than 10MB
+    // curl_easy_setopt(handle, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)10 * 1024 * 1024);
+    //
+    // curl_easy_setopt(handle, CURLOPT_URL, url);
+    int sockfd = connect_by_ip(url);
+    
+	SSL* ssl = SSL_new(NULL);
+	if (!ssl)
+	{
+		fprintf(stderr, "SSL_new() failed.\n");
+		close(sockfd);
+		// SSL_CTX_free(ctx);
+		return ;
+	}
 
-    curl_easy_setopt(handle, CURLOPT_URL, url);
-    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+    // curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
     struct vec* html_data = vec_init(0);
-    curl_easy_setopt(handle, CURLOPT_WRITEDATA, html_data);
+    // curl_easy_setopt(handle, CURLOPT_WRITEDATA, html_data);
+    //
+    // CURLcode success = curl_easy_perform(handle);
+    // if (success != CURLE_OK) {
+    //     fprintf(stderr, "=== Error requesting page\n");
+    //     curl_easy_cleanup(handle);
+    //     free(url);
+    //     return;
+    // }
+    // === WE GET: downloaded HTML in html_data.
 
-    CURLcode success = curl_easy_perform(handle);
-    if (success != CURLE_OK) {
-        fprintf(stderr, "=== Error requesting page\n");
-        curl_easy_cleanup(handle);
-        free(url);
-        return;
-    }
 
     // Replace url with an effective retrieved by curl.
     char* tmp_url;
-    curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &tmp_url);
+    // curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &tmp_url);
     free(url);
     url = strdup(tmp_url);
 
     capture_hrefs_from_html(html_data, url, depth_level, handle_found_url_cb);
 
-    curl_easy_cleanup(handle);
+    // curl_easy_cleanup(handle);
     vec_deinit(html_data);
     free(url);
 }
