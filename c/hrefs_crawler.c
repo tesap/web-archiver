@@ -6,15 +6,16 @@
 #include <getopt.h>
 #include <ctype.h>
 
-// #include <curl/curl.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
-// My definitions
-int connect_by_ip(const char* hostname);
-// ===
+#include "./url_parser.h"
+#include "./html_parser.h"
+#include "./network.h"
+#include "./util.h"
+
 
 #define DEFAULT_DEPTH_LEVEL 1
 #define DEFAULT_REQUEST_PERIOD 50
@@ -43,224 +44,12 @@ struct cmd_args cmd_args = {
 };
 
 
-struct vec {
-    size_t size;
-    char* ptr;
-    bool allocated;
+struct HttpPage {
+    char effective_url[256];
+    // char* http_data;
+    struct vec* data_vec;
+    int content_offset; // Offset to start of HTTP content inside data_vec
 };
-
-struct vec* vec_init(size_t newsize) {
-    struct vec* v = (struct vec*)malloc(sizeof(struct vec));
-    v->ptr = (char*)malloc(sizeof(char) * newsize);
-    v->size = newsize;
-    return v;
-}
-
-void vec_deinit(struct vec* v) {
-    free(v->ptr);
-    free(v);
-}
-
-void vec_append(struct vec* v, const char* buffer, size_t newsize) {
-    if (newsize <= 0) {
-        fprintf(stderr, "Error vec_append: newsize = %d\n", newsize);
-        exit(1);
-    }
-    if (!v || !v->ptr) {
-        fprintf(stderr, "v->ptr is NULL\n");
-        exit(1);
-    }
-
-    void* ptr = realloc(v->ptr, v->size + newsize);
-    if(!ptr) {
-        /* out of memory */
-        fprintf(stderr, "Not enough memory (realloc returned NULL): %s\n", strerror(errno));
-        exit(1);
-        return;
-    }
-    v->ptr = (char *)ptr;
-
-    memcpy((v->ptr + v->size), buffer, newsize);
-    v->size += newsize;
-}
-
-typedef enum {
-    STATE_DEFAULT,
-    STATE_PROGRESS,
-    // STATE_CAPTURE,
-} HrefParserState;
-
-char* capture_domain_from_url(const char* url) {
-    /*
-     * '.*://<CAPTURE>/.*'
-     */
-
-    int state = 0;
-    struct vec* capture_vec = vec_init(0);
-
-    for (int i = 0; i < strlen(url); i++) {
-        char el = url[i];
-        const char* el_ptr = url + i;
-        switch (state) {
-            case 0:
-                if (strncmp(el_ptr, "://", 3) == 0) {
-                    state++;
-                    i += 2;
-                }
-                break;
-            case 1:
-                if (el == '/') {
-                    // Capture END
-                    vec_append(capture_vec, "\0", 1);
-                    goto end_loop;
-                } else {
-                    vec_append(capture_vec, el_ptr, 1);
-                }
-            // default:
-            //     break;
-        }
-    }
-
-    // Loop ended without goto
-    // fprintf(stderr, "=== capture_domain_from_url: Capture has not reached END\n");
-
-end_loop:; 
-    char* result = capture_vec->ptr;
-    free(capture_vec);
-    return result;
-}
-
-bool is_number(char* s) {
-    char* i = s;
-    while (*i != '\0') {
-        if (!isdigit((unsigned char)*i)) {
-            return false;
-        }
-        i++;
-    }
-    return true;
-}
-
-bool ends_with(char* str, char* suffix) {
-    // If the suffix is longer than the string, it cannot be a suffix.
-    int len_suffix = strlen(suffix);
-    int len_str = strlen(str);
-    int delta = len_str - len_suffix;
-
-    if (delta < 0) {
-        return 0;
-    }
-
-    return (strcmp(str + delta, suffix) == 0);
-}
-
-void capture_hrefs_from_html(struct vec* data, const char* page_url, int depth_level, void(*callback)(const char*, int, char*)) {
-    /*
-     * The function effectively searches for links in HTML document.
-     * It uses simple per-byte parser which searches for the following match
-     * and captures content inside quotes:
-     *      '<a href="<CAPTURE>"'
-     * 
-     * It calls a @callback function on each captured URL
-     * A caller does not pass ownership of @page_url, he should handle it on its own.
-     */
-
-    int progress_step = 0;
-    HrefParserState state = STATE_DEFAULT;
-    struct vec* capture_vec = vec_init(0);
-    
-    for (int i = 0; i < data->size; i++) {
-        char el = data->ptr[i];
-        char* el_ptr = data-> ptr + i;
-        switch (state) {
-            case STATE_DEFAULT:
-                if (el == '<') {
-                    state = STATE_PROGRESS;
-                    progress_step = 1;
-                }
-                break;
-            case STATE_PROGRESS: {
-                switch (progress_step) {
-                    case 1:
-                        // printf("---> 1: (%c)\n", el);
-                        if (el == 'a') {
-                            progress_step++;
-                        } else if (el == ' ' || el == '\n') {
-                        } else {
-                            state = STATE_DEFAULT;
-                            progress_step = 0;
-                        }
-                        break;
-                    case 2:
-                        // TODO support spaces between, i.e. "< / a >"
-                        // printf("---> \t2: (%.*s)\n", 10, el_ptr);
-                        if (strncmp(el_ptr, "</a>", 4) == 0) {
-                            state = STATE_DEFAULT;
-                            progress_step = 0;
-                        }
-                        if (strncmp(el_ptr, "href", 4) == 0) {
-                            progress_step++;
-                            i += 3;
-                        }
-                        break;
-                    case 3:
-                        // printf("---> \t\t3: (%.*s)\n", 10, el_ptr);
-                        if (el == '=') {
-                            progress_step++;
-                        } else if (el == ' ' || el == '\n') {
-                        } else {
-                            state = STATE_DEFAULT;
-                            progress_step = 0;
-                        }
-                        break;
-                    case 4:
-                        if (el == '\"') {
-                            progress_step++;
-                        } else if (el == ' ' || el == '\n') {
-                        } else {
-                            state = STATE_DEFAULT;
-                            progress_step = 0;
-                        }
-                        break;
-                    case 5: // STATE_CAPTURE
-                        if (el == '\"') {
-                            vec_append(capture_vec, "\0", 1);
-                            (*callback)(page_url, depth_level, capture_vec->ptr);
-                            free(capture_vec);
-                            capture_vec = vec_init(0);
-
-                            state = STATE_DEFAULT;
-                            progress_step = 0;
-                        } else {
-                            vec_append(capture_vec, el_ptr, 1);
-                        }
-                        break;
-                    default:
-                        fprintf(stderr, "=== Unknown progress_step: %d\n", progress_step);
-                }
-            }
-                
-            // default:
-            //     Skip, go on
-        }
-    }
-    vec_deinit(capture_vec);
-}
-
-bool is_url_relative(char* url) {
-    /*
-     * Tells whether a URL refers relative path.
-     * which means it is either refers relative path or an http/https URL.
-     */
-    return strncmp(url, "/", 1) == 0;
-}
-
-bool is_url_http(char* url) {
-    /*
-     * Tells whether a URL is http/https.
-     */
-    return strncmp(url, "http", 4) == 0;
-}
 
 void crawl_urls(char* url, int depth_level);
 
@@ -285,8 +74,11 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
     }
 
     if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
-        char* domain_result_url = capture_domain_from_url(result_url);
-        char* domain_page_url = capture_domain_from_url(page_url);
+        struct UrlParts parts;
+        parse_url(result_url, &parts);
+        char* domain_result_url = parts.host;
+        parse_url(page_url, &parts);
+        char* domain_page_url = parts.host;
         if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
             if (strcmp(domain_page_url, domain_result_url) != 0) {
                 return;
@@ -310,22 +102,72 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
     crawl_urls(result_url, depth_level - 1);
 }
 
-// void debug_libcurl_version() {
-//     curl_version_info_data *ver = curl_version_info(CURLVERSION_NOW);
-//     printf("libcurl version %u.%u.%u\n",
-//         (ver->version_num >> 16) & 0xff,
-//         (ver->version_num >> 8) & 0xff,
-//         ver->version_num & 0xff);
-// }
+void crawl_urls(char* url, int depth_level) {
+    /*
+     * The algorithm is:
+     * - Retrieve requested URL
+     * - Traverse HTML to found http hrefs
+     * - Recursively crawl found URLs by a depth of @depth_level
+     *
+     * A caller should pass ownership of @url, i.e. @url is freed at the end of current function.
+     */
+    if (depth_level == 0) {
+        free(url);
+        return;
+    }
 
-// size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx);
-size_t write_data(void *buffer, size_t size, size_t nmemb, void *ctx) {
-    size_t realsize = size * nmemb;
+    usleep(cmd_args.request_period * 1000); 
 
-    struct vec* v = (struct vec*)ctx;
-    vec_append(v, (char *)buffer, realsize);
+    // Add '/' at end if missing
+    int url_len = strlen(url);
+    if (url[url_len-1] != '/') {
+        url = (char* )realloc(url, url_len + 2);
+        url[url_len] = '/';
+        url[url_len+1] = '\0';
+    }
 
-    return realsize;
+    // CURL *handle = curl_easy_init();
+    // // === SETUP ===
+    // // curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
+    // curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, cmd_args.request_timeout);
+    // curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
+    // // No larger than 10MB
+    // curl_easy_setopt(handle, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)10 * 1024 * 1024);
+    //
+    // curl_easy_setopt(handle, CURLOPT_URL, url);
+    struct HttpPage downloaded_page;
+    download_http(url, &downloaded_page);
+    // free(url)
+    // url = downloaded_page->effective_url;
+
+    // curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
+    // struct vec* html_data = vec_init(0);
+    // curl_easy_setopt(handle, CURLOPT_WRITEDATA, html_data);
+    //
+    // CURLcode success = curl_easy_perform(handle);
+    // if (success != CURLE_OK) {
+    //     fprintf(stderr, "=== Error requesting page\n");
+    //     curl_easy_cleanup(handle);
+    //     free(url);
+    //     return;
+    // }
+    // === WE GET: downloaded HTML in html_data.
+
+
+    // Replace url with an effective retrieved by curl.
+    // char* tmp_url;
+    // curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &tmp_url);
+    // free(url);
+    // url = strdup(tmp_url);
+
+    // TODO More optimal arguments passing
+    capture_hrefs_from_html(downloaded_page.data_vec->ptr + downloaded_page.content_offset, downloaded_page.data_vec->size - downloaded_page.content_offset, downloaded_page.effective_url, depth_level, handle_found_url_cb);
+
+    // curl_easy_cleanup(handle);
+// cleanup:
+    // TODO
+    // vec_deinit(html_data);
+    // free(url);
 }
 
 void exit_args_error() {
@@ -436,75 +278,4 @@ int main(int argc, char* argv[]) {
 
     // curl_global_cleanup();
     return 0;
-}
-
-void crawl_urls(char* url, int depth_level) {
-    /*
-     * The algorithm is:
-     * - Retrieve requested URL
-     * - Traverse HTML to found http hrefs
-     * - Recursively crawl found URLs by a depth of @depth_level
-     *
-     * A caller should pass ownership of @url, i.e. @url is freed at the end of current function.
-     */
-    if (depth_level == 0) {
-        free(url);
-        return;
-    }
-
-    usleep(cmd_args.request_period * 1000); 
-
-    // Add '/' at end if missing
-    int url_len = strlen(url);
-    if (url[url_len-1] != '/') {
-        url = (char* )realloc(url, url_len + 2);
-        url[url_len] = '/';
-        url[url_len+1] = '\0';
-    }
-
-    // CURL *handle = curl_easy_init();
-    // // === SETUP ===
-    // // curl_easy_setopt(handle, CURLOPT_VERBOSE, 1);
-    // curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, cmd_args.request_timeout);
-    // curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1);
-    // // No larger than 10MB
-    // curl_easy_setopt(handle, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)10 * 1024 * 1024);
-    //
-    // curl_easy_setopt(handle, CURLOPT_URL, url);
-    int sockfd = connect_by_ip(url);
-    
-	SSL* ssl = SSL_new(NULL);
-	if (!ssl)
-	{
-		fprintf(stderr, "SSL_new() failed.\n");
-		close(sockfd);
-		// SSL_CTX_free(ctx);
-		return ;
-	}
-
-    // curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_data);
-    struct vec* html_data = vec_init(0);
-    // curl_easy_setopt(handle, CURLOPT_WRITEDATA, html_data);
-    //
-    // CURLcode success = curl_easy_perform(handle);
-    // if (success != CURLE_OK) {
-    //     fprintf(stderr, "=== Error requesting page\n");
-    //     curl_easy_cleanup(handle);
-    //     free(url);
-    //     return;
-    // }
-    // === WE GET: downloaded HTML in html_data.
-
-
-    // Replace url with an effective retrieved by curl.
-    char* tmp_url;
-    // curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &tmp_url);
-    free(url);
-    url = strdup(tmp_url);
-
-    capture_hrefs_from_html(html_data, url, depth_level, handle_found_url_cb);
-
-    // curl_easy_cleanup(handle);
-    vec_deinit(html_data);
-    free(url);
 }

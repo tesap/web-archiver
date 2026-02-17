@@ -1,7 +1,11 @@
 
 OUT=out
+FLAGS=-Werror -Wreturn-type -fno-exceptions -fno-rtti
 
-all: hrefs_crawler
+all: out/hrefs_crawler out/tests-url_parser
 
-hrefs_crawler: hrefs_crawler.c
-	g++ -Werror -Wreturn-type -fno-exceptions -fno-rtti $^ -lcurl -o $@
+${OUT}/hrefs_crawler: hrefs_crawler.c url_parser.c html_parser.c network.c util.c
+	gcc $^ -o $@
+    
+${OUT}/tests-url_parser: tests/tests-url_parser.c url_parser.c
+	gcc $^ -o $@
