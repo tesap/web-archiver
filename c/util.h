@@ -11,5 +11,5 @@ void vec_append(struct vec* v, const char* recv_buff, size_t newsize);
 bool is_number(const char* s);
 bool ends_with(const char* str, const char* suffix);
 
-int read_file(const char* path, char* out);
-int write_file(const char* path, const char* buff);
+int read_file(const char* path, char** out);
+int write_file(const char* path, const char* buff, size_t buff_size);
