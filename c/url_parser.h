@@ -12,10 +12,10 @@ struct UrlParts {
     char protocol[16];
     char host[256];
     char path[1024];
-    // TODO: int port;
 };
 
 struct UrlPtrs get_url_pointers(const char* url);
 void parse_url(const char* url, struct UrlParts* parts);
+
 bool is_url_relative(const char* url);
 bool is_url_http(char* url);

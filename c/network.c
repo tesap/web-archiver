@@ -2,65 +2,14 @@
 #include "./network.h"
 #include "./util.h"
 #include "./url_parser.h"
+#include "./http_parser.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
 #define BUFFER_SIZE 64
 
-void __print_debug(struct addrinfo* fetched) {
-    char ipstr[INET6_ADDRSTRLEN];
-
-    for (struct addrinfo* p = fetched; p != NULL; p = p->ai_next) {
-        void *addr;
-        char *ipver;
-
-        if (p->ai_family == AF_INET) { // IPv4
-            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-            addr = &(ipv4->sin_addr);
-            ipver = "IPv4";
-        } else { // IPv6
-            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
-            addr = &(ipv6->sin6_addr);
-            ipver = "IPv6";
-        }
-
-        inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
-        printf("  %s: %s\n", ipver, ipstr);
-    }
-}
-
-const char* find_content_start(const char* http_response) {
-    // TODO Better handling of corner cases
-    return strstr(http_response, "\r\n\r\n") + 4;
-}
-
-int find_redirect_location(const char* http_response, const char* request_url, char* result) {
-    const char* header_start = strstr(http_response, "Location: ");
-    if (!header_start) {
-        fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
-        return -1;
-    }
-
-    const char* value_start = header_start + 10;
-    size_t value_len = strlen_with_delims(value_start);
-
-    if (is_url_relative(value_start)) {
-        struct UrlPtrs ptrs = get_url_pointers(request_url);
-        // Copy part of URL without path
-        int len = ptrs.host_end - request_url;
-        memcpy(result, request_url, len);
-        // Append redirection relative path 
-        memcpy(result + len, value_start, value_len);
-        result[len + value_len] = '\0';
-    } else {
-        memcpy(result, value_start, value_len);
-        result[value_len] = '\0';
-    }
-    return 0;
-}
-
-int create_socket(const char* hostname, const char* service) {
+int create_tcp_socket(const char* hostname, const char* service) {
     struct addrinfo hints, *addrinfo_result;
     int status;
     
@@ -91,7 +40,6 @@ int create_socket(const char* hostname, const char* service) {
 		}
 		break;
     }
-    // __print_debug(addrinfo_result);
     freeaddrinfo(addrinfo_result);
 
     return sockfd;
@@ -113,7 +61,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     struct vec* tcp_data_vec = vec_init(0);
         
     if (strcmp(url_parts.protocol, "http") == 0 || strlen(url_parts.protocol) == 0) {
-        sockfd = create_socket(url_parts.host, "80");
+        sockfd = create_tcp_socket(url_parts.host, "80");
 
         // --- Send request ---
         int bytes_sent = send(sockfd, request, strlen(request), 0);
@@ -124,7 +72,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         }
         vec_append(tcp_data_vec, "\0", 1);
     } else if (strcmp(url_parts.protocol, "https") == 0) {
-        sockfd = create_socket(url_parts.host, "443");
+        sockfd = create_tcp_socket(url_parts.host, "443");
 
         SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
         if (!ctx) {
@@ -187,14 +135,14 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         return -1;
     } else if (status_code == 301) {
         char redirect_url[256];
-        if (find_redirect_location(tcp_data, url, redirect_url) != 0) {
+        if (get_location_header(tcp_data, url, redirect_url) != 0) {
             return -1;
         }
         // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
         return download_http(redirect_url, timeout_sec, out);
     } else if (status_code == 200) {
         out->data_vec = tcp_data_vec;
-        out->content_offset = tcp_data - find_content_start(tcp_data);
+        out->content_offset = tcp_data - get_content_start(tcp_data);
         int len = strlen(url);
         memcpy(out->effective_url, url, len);
         out->effective_url[len] = '\0';
