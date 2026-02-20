@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -15,7 +16,6 @@
 #include "./html_parser.h"
 #include "./network.h"
 #include "./util.h"
-
 
 #define DEFAULT_DEPTH_LEVEL 1
 #define DEFAULT_REQUEST_PERIOD 50
@@ -44,19 +44,18 @@ struct cmd_args cmd_args = {
 };
 
 
-struct HttpPage {
-    char effective_url[256];
-    // char* http_data;
-    struct vec* data_vec;
-    int content_offset; // Offset to start of HTTP content inside data_vec
-};
-
 void crawl_urls(char* url, int depth_level);
 
 void handle_found_url_cb(const char* page_url, int depth_level, char* found_url) {
     /*
      * The function takes ownership of @found_url, i.e. it frees it at the end.
      */
+    
+    assert(page_url != NULL);
+    assert(found_url != NULL);
+    assert(strlen(page_url) != 0);
+    assert(strlen(found_url) != 0);
+
     char* result_url;
     if (is_url_http(found_url)) {
         result_url = found_url;
@@ -64,8 +63,8 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
         char* stripped_found_url = found_url + 1;
         int full_url_len = strlen(page_url) + strlen(stripped_found_url) + 1;
         char* full_url = (char *)malloc(full_url_len * sizeof(char));
-        
-        sprintf(full_url, "%s%s", page_url, stripped_found_url);
+
+        snprintf(full_url, full_url_len, "%s%s", page_url, stripped_found_url);
         result_url = full_url;
         free(found_url);
     } else {

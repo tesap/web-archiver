@@ -30,8 +30,12 @@ void __print_debug(struct addrinfo* fetched) {
     }
 }
 
-char* find_content_start(char* http_response) {
+const char* find_content_start(const char* http_response) {
+    // TODO Better handling of corner cases
     return strstr(http_response, "\r\n\r\n") + 4;
+}
+
+const char* find_redirect_location(const char* http_response) {
 }
 
 int create_socket(const char* hostname, const char* service) {
@@ -71,14 +75,16 @@ int create_socket(const char* hostname, const char* service) {
     return sockfd;
 }
 
-int download_http(const char* url, struct HttpPage* res_page) {
+int download_http(const char* url, struct HttpPage* out) {
     printf("--- URL: %s\n", url);
     struct UrlParts url_parts;
     parse_url(url, &url_parts);
 
     char request[1024];
+
     snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", url_parts.path, url_parts.host);
     // printf("REQUEST: %s\n", request);
+    fflush(stdout);
 
     int sockfd;
     char recv_buff[BUFFER_SIZE];
@@ -114,6 +120,9 @@ int download_http(const char* url, struct HttpPage* res_page) {
         }
 
         SSL_set_fd(ssl, sockfd);
+
+        // IMPORTANT: Set SNI hostname
+        SSL_set_tlsext_host_name(ssl, url_parts.host);
 
         if (SSL_connect(ssl) <= 0)
         {
@@ -152,23 +161,29 @@ int download_http(const char* url, struct HttpPage* res_page) {
     if (status_code == 0) {
         fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, tcp_data);
     } else if (status_code == 301) {
-        char* location_substr = strstr(tcp_data, "Location: ");
+        printf("|%s|\n", tcp_data);
+        const char* location_substr = strstr(tcp_data, "Location: ");
         if (!location_substr) {
             fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
+        } else {
+            // TODO move to function + tests
+            const char* location_url_start = location_substr + 10;
+            size_t len = strlen_with_delims(location_url_start);
+            char redirect_url[256];
+
+            memcpy(redirect_url, location_url_start, len);
+            redirect_url[len] = '\0';
+            printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
+
+            return download_http(redirect_url, out);
         }
-        char* location_url_end = strstr(location_substr, "\n");
-        char* location_url_start = location_substr + 10;
-        char redirect_url[64];
-        int len = location_url_end - location_url_start;
-
-        memcpy(redirect_url, location_url_start, len);
-        redirect_url[len] = '\0';
-        printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
-
-        download_http(redirect_url, res_page);
     } else if (status_code == 200) {
-        res_page->data_vec = tcp_data_vec;
-        res_page->content_offset = tcp_data - find_content_start(tcp_data);
+        out->data_vec = tcp_data_vec;
+        out->content_offset = tcp_data - find_content_start(tcp_data);
+        memcpy(out->effective_url, url, strlen(url));
+        return 0;
+    } else if (status_code == 400) {
+        // printf("Response: %s\n", tcp_data);
     }
 }
 

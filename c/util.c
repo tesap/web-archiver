@@ -47,7 +47,7 @@ void vec_append(struct vec* v, const char* recv_buff, size_t newsize) {
 }
 
 bool is_number(const char* s) {
-    char* i = s;
+    const char* i = s;
     while (*i != '\0') {
         if (!isdigit((unsigned char)*i)) {
             return false;
@@ -125,3 +125,50 @@ int write_file(const char* path, const char* buff, const size_t buff_size) {
     }
     return 0;
 }
+
+void debug_string(const char *str, const char *name) {
+    printf("%s: '", name);
+    for (size_t i = 0; str[i]; i++) {
+        if (str[i] >= 32 && str[i] <= 126) {
+            printf("%c", str[i]);
+        } else {
+            printf("\\x%02X", (unsigned char)str[i]);
+        }
+    }
+    printf("' (length: %zu)\n", strlen(str));
+}
+
+size_t strlen_with_delims(const char *s) {
+    const char* i = s;
+    while (*i != '\0' && *i != '\n' && *i != '\r' && *i != ' ') {
+        i++;
+    }
+    return i - s;
+}
+
+
+const char * strstr_with_delims(const char *s1, const char *s2) {
+    const size_t len = strlen(s2);
+
+    if (!len) {
+        return s1;
+    }
+
+    for (const char* i = s1; *i != '\0' && *i != '\n' && *i != '\r' && *i != ' '; i++) {
+        if (strncmp(i, s2, len) == 0) {
+            return (char *)i;
+        }
+    }
+    return NULL;
+}
+
+const char * strchr_with_delims(const char *s1, const char ch) {
+    for (const char* i = s1; *i != '\0' && *i != '\n' && *i != '\r' && *i != ' '; i++) {
+        // printf("=== strchr: %c\n", *i);
+        if (*i == ch) {
+            return (const char *)i;
+        }
+    }
+    return NULL;
+}
+

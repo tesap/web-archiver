@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "./util.h"
+
 struct UrlParts {
     char protocol[16];
     char host[256];
@@ -25,16 +27,15 @@ bool is_url_http(char* url) {
     return strncmp(url, "http", 4) == 0;
 }
 
-
 void parse_url(const char* url, struct UrlParts* parts) {
-    char* url_ptr = url;
-    char* url_end = url + strlen(url); // TODO maybe -1
+    const char* url_ptr = url;
+    const char* url_end = url + strlen_with_delims(url); // TODO maybe -1
 
     memcpy(parts->protocol, "\0", 1);
     memcpy(parts->host, "\0", 1);
     memcpy(parts->path, "\0", 1);
 
-    char *protocol_end = strstr(url_ptr, "://");
+    const char *protocol_end = strstr_with_delims(url_ptr, "://");
     if (protocol_end) {
         int len = protocol_end - url_ptr;
         memcpy(parts->protocol, url_ptr, len);
@@ -42,11 +43,11 @@ void parse_url(const char* url, struct UrlParts* parts) {
         url_ptr = protocol_end + 3;
     }
 
-    char *host_end = strchr(url_ptr, '/');
+    const char *host_end = strchr_with_delims(url_ptr, '/');
     if (!host_end) {
-        host_end = strchr(url_ptr, '#');
+        host_end = strchr_with_delims(url_ptr, '#');
         if (!host_end) {
-            host_end = strchr(url_ptr, '?');
+            host_end = strchr_with_delims(url_ptr, '?');
             if (!host_end) {
                 host_end = url_end;
             }
@@ -58,9 +59,9 @@ void parse_url(const char* url, struct UrlParts* parts) {
     parts->host[len] = '\0';
     url_ptr = host_end;
 
-    char *path_end = strchr(url_ptr, '#');
+    const char *path_end = strchr_with_delims(url_ptr, '#');
     if (!path_end) {
-        path_end = strchr(url_ptr, '?');
+        path_end = strchr_with_delims(url_ptr, '?');
         if (!path_end) {
             path_end = url_end;
         }

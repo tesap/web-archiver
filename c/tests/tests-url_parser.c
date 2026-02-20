@@ -23,6 +23,8 @@ TEST_URL_PARSER(5, "http://sub2.sub-sdf.archlinux.org", "http", "sub2.sub-sdf.ar
 TEST_URL_PARSER(6, "http://archlinux.org#SDF", "http", "archlinux.org", "");
 TEST_URL_PARSER(7, "archlinux.org?SDF", "", "archlinux.org", "");
 TEST_URL_PARSER(8, "0.0.0.0:1234/path/234", "", "0.0.0.0:1234", "/path/234");
+TEST_URL_PARSER(9, "http://archlinux.org/\n", "http", "archlinux.org", "/");
+TEST_URL_PARSER(10, "http://archlinux.org/\r", "http", "archlinux.org", "/");
 
 int main() {
     RUN_TEST(url_parser_1);
@@ -33,4 +35,6 @@ int main() {
     RUN_TEST(url_parser_6);
     RUN_TEST(url_parser_7);
     RUN_TEST(url_parser_8);
+    RUN_TEST(url_parser_9);
+    RUN_TEST(url_parser_10);
 }

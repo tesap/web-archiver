@@ -1,14 +1,10 @@
-// #include <stdio.h>
-// #include <string.h>
-#include <assert.h>
-
 #include "./tests-common.h"
 #include "../network.h"
 #include "../util.h"
 
 #define TEST_NETWORK_FIND_CONTENT_START(name, data, result_expected) \
     TEST(network_##name) { \
-        char* result = find_content_start(data); \
+        const char* result = find_content_start(data); \
         ASSERT_EQUAL_STR(result, result_expected); \
     } \
 
@@ -16,7 +12,7 @@
     TEST(network_##name) { \
         char* buff; \
         read_file(path, &buff); \
-        char* start_ptr = find_content_start(buff); \
+        const char* start_ptr = find_content_start(buff); \
         ASSERT_EQUAL_STRN(start_ptr, result_expected, n_compare); \
     } \
 

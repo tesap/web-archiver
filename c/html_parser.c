@@ -23,7 +23,7 @@ void capture_hrefs_from_html(const char* data, int size, const char* page_url, i
     
     for (int i = 0; i < size; i++) {
         char el = data[i];
-        char* el_ptr = data + i;
+        const char* el_ptr = data + i;
         switch (state) {
             case STATE_DEFAULT:
                 if (el == '<') {
@@ -98,6 +98,3 @@ void capture_hrefs_from_html(const char* data, int size, const char* page_url, i
     }
     vec_deinit(capture_vec);
 }
-
-void crawl_urls(char* url, int depth_level);
-
