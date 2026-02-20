@@ -1,19 +1,9 @@
-// #include<stddef.h>
-// #include<stdio.h>
-// #include<string.h>
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 
 #include "./network.h"
 #include "./util.h"
 #include "./url_parser.h"
 
+#define BUFFER_SIZE 64
 
 void __print_debug(struct addrinfo* fetched) {
     char ipstr[INET6_ADDRSTRLEN];
@@ -37,9 +27,11 @@ void __print_debug(struct addrinfo* fetched) {
     }
 }
 
-int create_socket(const char* hostname, const char* service) {
-    // const char* hostname = "archlinux.org";
+char* find_http_content_start(char* data) {
+    return strstr(data, "\r\n\r\n") + 4;
+}
 
+int create_socket(const char* hostname, const char* service) {
     printf("=== hostname: %s\n", hostname);
     struct addrinfo hints, *addrinfo_result;
     int status;
@@ -53,8 +45,6 @@ int create_socket(const char* hostname, const char* service) {
         fprintf(stderr, "=== getaddrinfo: %s\n", gai_strerror(rv));
         return -1;
     }
-    
-    // struct sockaddr_storage* result = (struct sockaddr_storage*)addrinfo_result->ai_addr;
 
     int sockfd = -1;
     for (struct addrinfo* p = addrinfo_result; p != NULL; p = p->ai_next) {
@@ -107,13 +97,8 @@ int download_http(const char* url, struct HttpPage* res_page) {
 
     int bytes_sent = send(sockfd, request, strlen(request), 0);
     printf("==== bytes_sent: %d\n", bytes_sent);
-#define BUFFER_SIZE 64
     char recv_buff[BUFFER_SIZE];
     int bytes_received;
-    // struct vec* recv_data_vec = vec_init(0);
-    // struct vec* headers_vec = vec_init(0);
-    // struct vec* content_vec = vec_init(0);
-    //
     struct vec* tcp_data_vec = vec_init(0);
     
     while ((bytes_received = recv(sockfd, recv_buff, BUFFER_SIZE - 1, 0)) > 0) {

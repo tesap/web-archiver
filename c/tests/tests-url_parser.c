@@ -6,86 +6,23 @@
 #include "./tests-common.h"
 #include "../url_parser.h"
 
-TEST(url_parser_1) {
-    struct UrlParts parts;
-    parse_url("/sdfsd/123/sdfsd/", &parts);
+#define TEST_URL_PARSER(name, url, protocol_expected, host_expected, path_expected) \
+    TEST(url_parser_##name) { \
+        struct UrlParts parts; \
+        parse_url(url, &parts); \
+        ASSERT_EQUAL_STR(parts.protocol, protocol_expected); \
+        ASSERT_EQUAL_STR(parts.host, host_expected); \
+        ASSERT_EQUAL_STR(parts.path, path_expected); \
+    } \
 
-    ASSERT_EQUAL_STR(parts.protocol, "");
-    ASSERT_EQUAL_STR(parts.host, "");
-    ASSERT_EQUAL_STR(parts.path, "/sdfsd/123/sdfsd/");
-}
-
-TEST(url_parser_2) {
-    struct UrlParts parts;
-    parse_url("/", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "");
-    ASSERT_EQUAL_STR(parts.host, "");
-    ASSERT_EQUAL_STR(parts.path, "/");
-}
-
-TEST(url_parser_3) {
-    struct UrlParts parts;
-    parse_url("https://archlinux.org", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "https");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "");
-}
-
-TEST(url_parser_4) {
-    struct UrlParts parts;
-    parse_url("https://archlinux.org/", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "https");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "/");
-}
-
-TEST(url_parser_5) {
-    struct UrlParts parts;
-    parse_url("http://archlinux.org/some/path/long#SDF", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "http");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "/some/path/long");
-}
-
-TEST(url_parser_6) {
-    struct UrlParts parts;
-    parse_url("http://sub2.sub-sdf.archlinux.org", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "http");
-    ASSERT_EQUAL_STR(parts.host, "sub2.sub-sdf.archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "");
-}
-
-TEST(url_parser_7) {
-    struct UrlParts parts;
-    parse_url("http://archlinux.org#SDF", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "http");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "");
-}
-
-TEST(url_parser_8) {
-    struct UrlParts parts;
-    parse_url("http://archlinux.org#SDF", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "http");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "");
-}
-
-TEST(url_parser_9) {
-    struct UrlParts parts;
-    parse_url("archlinux.org?SDF", &parts);
-
-    ASSERT_EQUAL_STR(parts.protocol, "");
-    ASSERT_EQUAL_STR(parts.host, "archlinux.org");
-    ASSERT_EQUAL_STR(parts.path, "");
-}
+TEST_URL_PARSER(1, "/sdfsd/123/sdfsd/", "", "", "/sdfsd/123/sdfsd/");
+TEST_URL_PARSER(2, "/", "", "", "/");
+TEST_URL_PARSER(3, "https://archlinux.org", "https", "archlinux.org", "");
+TEST_URL_PARSER(4, "http://archlinux.org/some/path/long#SDF", "http", "archlinux.org", "/some/path/long");
+TEST_URL_PARSER(5, "http://sub2.sub-sdf.archlinux.org", "http", "sub2.sub-sdf.archlinux.org", "");
+TEST_URL_PARSER(6, "http://archlinux.org#SDF", "http", "archlinux.org", "");
+TEST_URL_PARSER(7, "archlinux.org?SDF", "", "archlinux.org", "");
+TEST_URL_PARSER(8, "0.0.0.0:1234/path/234", "", "0.0.0.0:1234", "/path/234");
 
 int main() {
     RUN_TEST(url_parser_1);
@@ -96,5 +33,4 @@ int main() {
     RUN_TEST(url_parser_6);
     RUN_TEST(url_parser_7);
     RUN_TEST(url_parser_8);
-    RUN_TEST(url_parser_9);
 }

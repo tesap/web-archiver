@@ -1,4 +1,10 @@
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 struct HttpPage {
     char effective_url[256];
@@ -10,3 +16,4 @@ struct HttpPage {
 int create_socket(const char* hostname, const char* service);
 int download_http(const char* url, struct HttpPage* res_page);
 
+char* find_http_content_start(char* data);

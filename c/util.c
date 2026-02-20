@@ -41,7 +41,7 @@ void vec_append(struct vec* v, const char* recv_buff, size_t newsize) {
     v->size += newsize;
 }
 
-bool is_number(char* s) {
+bool is_number(const char* s) {
     char* i = s;
     while (*i != '\0') {
         if (!isdigit((unsigned char)*i)) {
@@ -52,7 +52,7 @@ bool is_number(char* s) {
     return true;
 }
 
-bool ends_with(char* str, char* suffix) {
+bool ends_with(const char* str, const char* suffix) {
     // If the suffix is longer than the string, it cannot be a suffix.
     int len_suffix = strlen(suffix);
     int len_str = strlen(str);
@@ -65,3 +65,13 @@ bool ends_with(char* str, char* suffix) {
     return (strcmp(str + delta, suffix) == 0);
 }
 
+int read_file(const char* path, char* out) {
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {  
+        perror("open");
+        return -1;
+    }
+}
+
+int write_file(const char* path, const char* buff) {
+}
