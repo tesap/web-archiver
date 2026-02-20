@@ -271,6 +271,10 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
 int main(int argc, char* argv[]) {
     parse_cmd_args(argc, argv, &cmd_args);
 
+    SSL_library_init();
+	SSL_load_error_strings();
+	OpenSSL_add_all_algorithms();
+
     // debug_libcurl_version();
     // curl_global_init(CURL_GLOBAL_NOTHING);
 

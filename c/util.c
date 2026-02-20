@@ -112,7 +112,7 @@ int read_file(const char* path, char** out) {
 }
 
 int write_file(const char* path, const char* buff, const size_t buff_size) {
-    int fd = open(path, O_CREAT | O_WRONLY);
+    int fd = open(path, O_CREAT | O_WRONLY, 0666);
     if (fd == -1) {  
         perror("open");
         return -1;
