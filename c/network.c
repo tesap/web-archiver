@@ -35,7 +35,29 @@ const char* find_content_start(const char* http_response) {
     return strstr(http_response, "\r\n\r\n") + 4;
 }
 
-const char* find_redirect_location(const char* http_response) {
+int find_redirect_location(const char* http_response, const char* request_url, char* result) {
+    const char* header_start = strstr(http_response, "Location: ");
+    if (!header_start) {
+        fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
+        return -1;
+    }
+
+    const char* value_start = header_start + 10;
+    size_t value_len = strlen_with_delims(value_start);
+
+    if (is_url_relative(value_start)) {
+        struct UrlPtrs ptrs = get_url_pointers(request_url);
+        // Copy part of URL without path
+        int len = ptrs.host_end - request_url;
+        memcpy(result, request_url, len);
+        // Append redirection relative path 
+        memcpy(result + len, value_start, value_len);
+        result[len + value_len] = '\0';
+    } else {
+        memcpy(result, value_start, value_len);
+        result[value_len] = '\0';
+    }
+    return 0;
 }
 
 int create_socket(const char* hostname, const char* service) {
@@ -75,8 +97,7 @@ int create_socket(const char* hostname, const char* service) {
     return sockfd;
 }
 
-int download_http(const char* url, struct HttpPage* out) {
-    printf("--- URL: %s\n", url);
+int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     struct UrlParts url_parts;
     parse_url(url, &url_parts);
 
@@ -137,53 +158,50 @@ int download_http(const char* url, struct HttpPage* out) {
         SSL_write(ssl, request, strlen(request));
 
         // --- Receive response ---
+        struct timeval tv;
+        tv.tv_sec = timeout_sec;
+        tv.tv_usec = 0;
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
         while ((bytes_received = SSL_read(ssl, recv_buff, BUFFER_SIZE - 1)) > 0) {
             vec_append(tcp_data_vec, recv_buff, bytes_received);
         }
         vec_append(tcp_data_vec, "\0", 1);
     } else {
         fprintf(stderr, "=== Protocol not supported: %s\n", url);
-        exit(1);
+        return -1;
     }
 
-    // TODO handle this possibility?
-    // if (sockfd == -1) {
-    //     fprintf(stderr, "=== Socket connection error: %s\n", url);
-    //     exit(1);
-    // }
+    if (bytes_received < 0) {
+        fprintf(stderr, "=== Error getting response: %s\n", url);
+        return -1;
+    }
 
     const char* tcp_data = tcp_data_vec->ptr;
 
     // --- Parsing HTTP response ---
     int status_code = 0;
     sscanf(tcp_data, "HTTP/%*d.%*d %d", &status_code);
-    printf("--- \tstatus_code: %d\n", status_code);
     if (status_code == 0) {
         fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, tcp_data);
+        return -1;
     } else if (status_code == 301) {
-        printf("|%s|\n", tcp_data);
-        const char* location_substr = strstr(tcp_data, "Location: ");
-        if (!location_substr) {
-            fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
-        } else {
-            // TODO move to function + tests
-            const char* location_url_start = location_substr + 10;
-            size_t len = strlen_with_delims(location_url_start);
-            char redirect_url[256];
-
-            memcpy(redirect_url, location_url_start, len);
-            redirect_url[len] = '\0';
-            printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
-
-            return download_http(redirect_url, out);
+        char redirect_url[256];
+        if (find_redirect_location(tcp_data, url, redirect_url) != 0) {
+            return -1;
         }
+        // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
+        return download_http(redirect_url, timeout_sec, out);
     } else if (status_code == 200) {
         out->data_vec = tcp_data_vec;
         out->content_offset = tcp_data - find_content_start(tcp_data);
-        memcpy(out->effective_url, url, strlen(url));
+        int len = strlen(url);
+        memcpy(out->effective_url, url, len);
+        out->effective_url[len] = '\0';
         return 0;
-    } else if (status_code == 400) {
-        // printf("Response: %s\n", tcp_data);
+    } else {
+        fprintf(stderr, "=== Bad status_code: %d\n", status_code);
+        return -1;
     }
 }
 

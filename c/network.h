@@ -14,6 +14,6 @@ struct HttpPage {
 };
 
 int create_socket(const char* hostname, const char* service);
-int download_http(const char* url, struct HttpPage* res_page);
+int download_http(const char* url, int timeout_sec, struct HttpPage* res_page);
 
 const char* find_content_start(const char* http_response);

@@ -100,9 +100,6 @@ int read_file(const char* path, char** out) {
     int bytes_read;
     while ((bytes_read = read(fd, *out + offset, BUFFER_SIZE)) != 0) {
         offset += bytes_read;
-        // printf("--- Read bytes: %d\n", bytes_read);
-        // printf("--- string: %d %d %d %d %d\n", (*out)[0], (*out)[1], (*out)[2], (*out)[3], (*out)[4]);
-        // printf("--- size: %d\n", size);
     }
 
     (*out)[size] = '\0';
