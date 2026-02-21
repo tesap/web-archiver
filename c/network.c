@@ -134,10 +134,6 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, tcp_data);
         return -1;
     } else if (status_code == 301) {
-        char filename[256];
-        sprintf(filename, "%s.http", url_parts.host);
-
-        write_file(filename, tcp_data, tcp_data_vec->size);
         char redirect_url[256];
         if (get_location_header(tcp_data, url, redirect_url) != 0) {
             return -1;
@@ -145,8 +141,11 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
         return download_http(redirect_url, timeout_sec, out);
     } else if (status_code == 200) {
+        // char filename[256];
+        // sprintf(filename, "%s22.http", url_parts.host);
+        // write_file(filename, tcp_data, tcp_data_vec->size);
         out->data_vec = tcp_data_vec;
-        out->content_offset = tcp_data - get_content_start(tcp_data);
+        out->content_offset = get_content_start(tcp_data) - tcp_data;
         int len = strlen(url);
         memcpy(out->effective_url, url, len);
         out->effective_url[len] = '\0';
