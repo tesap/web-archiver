@@ -18,7 +18,7 @@
 
 #define ASSERT_EQUAL_STRN(actual, expected, n) do { \
     if (strncmp(actual, expected, n) != 0) { \
-        printf("ASSERTION FAILED (%s:%d, %s)\n\tExpected: \"%s\"\n\tbut got:  \"%s\"\n", __FILE__, __LINE__, __func__, expected, actual); \
+        printf("ASSERTION FAILED (%s:%d, %s)\n\tExpected: \"%.*s\"\n\tbut got:  \"%.*s\"\n", __FILE__, __LINE__, __func__, n, expected, n, actual); \
         exit(1); \
     } \
 } while(0)

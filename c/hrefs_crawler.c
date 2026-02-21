@@ -73,22 +73,20 @@ void handle_found_url_cb(const char* page_url, int depth_level, char* found_url)
     }
 
     if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
-        struct UrlParts parts;
-        parse_url(result_url, &parts);
-        char* domain_result_url = parts.host;
-        parse_url(page_url, &parts);
-        char* domain_page_url = parts.host;
+        struct UrlParts p_result, p_page;
+        parse_url(result_url, &p_result);
+        parse_url(page_url, &p_page);
         if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
-            if (strcmp(domain_page_url, domain_result_url) != 0) {
+            if (strcmp(p_result.host, p_page.host) != 0) {
                 return;
             }
         }
         if (cmd_args.filter_type == DOMAIN_FILTER_SUBDOMAIN) {
             // Check whether result_url is a subdomain of page_url, f.e.:
-            // domain_result_url =  terms.archlinux.org
-            // domain_page_url =          archlinux.org
+            // p_result.host =  terms.archlinux.org
+            // p_page.host   =        archlinux.org
             // Then first is a subdomain of the second
-            if (!ends_with(domain_result_url, domain_page_url)) {
+            if (!ends_with(p_result.host, p_page.host)) {
                 return;
             }
         }
@@ -115,8 +113,6 @@ void crawl_urls(char* url, int depth_level) {
         return;
     }
 
-    usleep(cmd_args.request_period * 1000); 
-
     // Add '/' at end if missing
     int url_len = strlen(url);
     if (url[url_len-1] != '/') {
@@ -126,12 +122,16 @@ void crawl_urls(char* url, int depth_level) {
     }
 
     struct HttpPage downloaded_page;
+
+    // Wait period between network requests
+    usleep(cmd_args.request_period * 1000); 
     int res = download_http(
         url,
         cmd_args.request_timeout / 1000,
         &downloaded_page
     );
     if (res == 0) {
+
         capture_hrefs_from_html(
             downloaded_page.data_vec->ptr + downloaded_page.content_offset,
             downloaded_page.data_vec->size - downloaded_page.content_offset,

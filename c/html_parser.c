@@ -5,7 +5,13 @@
 #include "./util.h"
 #include "./html_parser.h"
 
-void capture_hrefs_from_html(const char* data, int size, const char* page_url, int depth_level, void(*callback)(const char*, int, char*)) {
+void capture_hrefs_from_html(
+    const char* data,
+    int size,
+    const char* page_url,
+    int depth_level,
+    void(*callback)(const char*, int, char*)
+) {
     /*
      * The function effectively searches for links in HTML document.
      * It uses simple per-byte parser which searches for the following match
@@ -77,7 +83,9 @@ void capture_hrefs_from_html(const char* data, int size, const char* page_url, i
                     case 5: // STATE_CAPTURE
                         if (el == '\"') {
                             vec_append(capture_vec, "\0", 1);
-                            (*callback)(page_url, depth_level, capture_vec->ptr);
+                            if (strlen(capture_vec->ptr) > 0) {
+                                (*callback)(page_url, depth_level, capture_vec->ptr);
+                            }
                             free(capture_vec);
                             capture_vec = vec_init(0);
 
@@ -91,9 +99,6 @@ void capture_hrefs_from_html(const char* data, int size, const char* page_url, i
                         fprintf(stderr, "=== Unknown progress_step: %d\n", progress_step);
                 }
             }
-                
-            // default:
-            //     Skip, go on
         }
     }
     vec_deinit(capture_vec);
