@@ -46,10 +46,18 @@ struct cmd_args cmd_args = {
 
 void crawl_urls(char* url, int depth_level);
 
-void handle_found_url_cb(const char* page_url, int depth_level, char* found_url) {
+void handle_found_url_cb(const char* page_url, int depth_level, char* found_url, HrefType ht) {
     /*
      * The function takes ownership of @found_url, i.e. it frees it at the end.
      */
+    
+    switch (ht) {
+        case HREF_TYPE_UNKNOWN: printf("---- HREF_TYPE_UNKNOWN\n"); break;
+        case HREF_TYPE_IMG: printf("---- HREF_TYPE_IMG\n"); break;
+        case HREF_TYPE_STYLE: printf("---- HREF_TYPE_STYLE\n"); break;
+        case HREF_TYPE_SCRIPT: printf("---- HREF_TYPE_SCRIPT\n"); break;
+        case HREF_TYPE_HTML: printf("---- HREF_TYPE_HTML\n"); break;
+    }
     
     assert(page_url != NULL);
     assert(found_url != NULL);
