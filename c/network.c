@@ -9,6 +9,8 @@
 
 #define BUFFER_SIZE 64
 
+bool ssl_initialized = false;
+
 int create_tcp_socket(const char* hostname, const char* service) {
     struct addrinfo hints, *addrinfo_result;
     int status;
@@ -72,6 +74,14 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         }
         vec_append(tcp_data_vec, "\0", 1);
     } else if (strcmp(url_parts.protocol, "https") == 0) {
+        if (!ssl_initialized) {
+            SSL_library_init();
+            SSL_load_error_strings();
+            OpenSSL_add_all_algorithms();
+            ssl_initialized = true;
+            // TODO do we need to deinit ssl?
+        }
+
         sockfd = create_tcp_socket(url_parts.host, "443");
 
         SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
