@@ -6,6 +6,16 @@
 #include "./util.h"
 #include "./html_parser.h"
 
+void print_href_type(HrefType ht) {
+    switch (ht) {
+        case HREF_TYPE_UNKNOWN: printf("---- HREF_TYPE_UNKNOWN\n"); break;
+        case HREF_TYPE_IMG: printf("---- HREF_TYPE_IMG\n"); break;
+        case HREF_TYPE_STYLE: printf("---- HREF_TYPE_STYLE\n"); break;
+        case HREF_TYPE_SCRIPT: printf("---- HREF_TYPE_SCRIPT\n"); break;
+        case HREF_TYPE_HTML: printf("---- HREF_TYPE_HTML\n"); break;
+    }
+}
+
 void skip_spaces(char** ptr) {
     while (**ptr == ' ' || **ptr == '\n') {
         (*ptr)++;
@@ -13,43 +23,43 @@ void skip_spaces(char** ptr) {
 }
 
 HrefType href_type(
-    const char* href_argument,
-    const char* type_argument,
-    const char* element_type
+    const char* href_attr,
+    const char* type_attr,
+    const char* elem_name
 ) {
-    if (strncmp(element_type, "a", 1) == 0) {
+    if (strncmp(elem_name, "a", 1) == 0) {
         return HREF_TYPE_HTML;
     }
-    if (strncmp(element_type, "img", 3) == 0) {
+    if (strncmp(elem_name, "img", 3) == 0) {
         return HREF_TYPE_IMG;
     }
-    if (strncmp(element_type, "script", 6) == 0) {
+    if (strncmp(elem_name, "script", 6) == 0) {
         return HREF_TYPE_SCRIPT;
     }
 
-    if (type_argument) {
-        if (strncmp(type_argument, "text/css", 8) == 0) {
+    if (type_attr) {
+        if (strncmp(type_attr, "text/css", 8) == 0) {
             return HREF_TYPE_STYLE;
         }
-        if (strncmp(type_argument, "image/", 6) == 0) {
+        if (strncmp(type_attr, "image/", 6) == 0) {
             return HREF_TYPE_IMG;
         }
-        if (strncmp(type_argument, "text/javascript", 15) == 0) {
+        if (strncmp(type_attr, "text/javascript", 15) == 0) {
             return HREF_TYPE_SCRIPT;
         }
     } else {
-        assert(href_argument != NULL);
-        int len = strlen(href_argument);
-        if (strncmp(href_argument + len - 4, ".png", 4) == 0) {
+        assert(href_attr != NULL);
+        int len = strlen(href_attr);
+        if (strncmp(href_attr + len - 4, ".png", 4) == 0) {
             return HREF_TYPE_IMG;
         }
-        if (strncmp(href_argument + len - 4, ".jpg", 4) == 0) {
+        if (strncmp(href_attr + len - 4, ".jpg", 4) == 0) {
             return HREF_TYPE_IMG;
         }
-        if (strncmp(href_argument + len - 4, ".css", 4) == 0) {
+        if (strncmp(href_attr + len - 4, ".css", 4) == 0) {
             return HREF_TYPE_STYLE;
         }
-        if (strncmp(href_argument + len - 3, ".js", 3) == 0) {
+        if (strncmp(href_attr + len - 3, ".js", 3) == 0) {
             return HREF_TYPE_SCRIPT;
         }
     }
@@ -59,23 +69,22 @@ HrefType href_type(
 
 void parse_html_elem(
     char** ptr_start,
-    const char* element_type,
-    const char* page_url,
-    const int depth_level,
-    void(*callback)(const char*, int, char*, HrefType)
+    const char* elem_name, // f.e. "a" or "script" or "link"
+    const char* href_attr_name, // f.e. "href" or "src"
+    void(*callback)(const char* href, HrefType ht, void* ctx),
+    void* ctx
 ) {
     /*
      * The function effectively searches for <a> elements in HTML document.
      * It uses simple per-byte parser which searches for the following match
      * and captures content inside quotes:
      *      '<a .* type="<CAPTURE_1>" .* href="<CAPTURE_2>">.*</a>"'
-     // *      '<img  .* src="<CAPTURE>"'
-     // *      '<link .* href="<CAPTURE>"'
+     *      '<img  .* src="<CAPTURE>"'
+     *      '<link .* href="<CAPTURE>"'
      * 
      * It calls a @callback function on each captured URL
      * A caller does not pass ownership of @page_url, he should handle it on its own.
      */
-    // TODO Could be rewritten with strstr()
 
     int progress_step = 0;
     char* capturing_arg = NULL;
@@ -84,26 +93,29 @@ void parse_html_elem(
 
     struct vec* capture_vec = vec_init(0);
 
+    char href_attr_match[strlen(href_attr_name) + 3];
+    sprintf(href_attr_match, "%s=\"", href_attr_name);
+
     #define MAX_ELEM_SIZE 256
     char* el_ptr = *ptr_start;
     while ((el_ptr - *ptr_start) < MAX_ELEM_SIZE) {
+        if (strncmp(el_ptr, "href=\"https://archlinux.org/iso", strlen("href=\"https://archlinux.org/iso")) == 0) {
+            printf("dd\n");
+        }
         switch (progress_step) {
             case 0:
                 // printf("---> \t2: (%.*s)\n", 10, el_ptr);
                 if (*el_ptr == '>') {
-                    if (type_arg) {
-                        printf("=== type: %s\n", type_arg);
-                    }
                     if (href_arg) {
-                        HrefType ht = href_type(href_arg, type_arg, element_type);
-                        (*callback)(page_url, depth_level, href_arg, ht);
+                        HrefType ht = href_type(href_arg, type_arg, elem_name);
+                        (*callback)(href_arg, ht, ctx);
                     }
 
-                    *ptr_start = el_ptr + 4;
+                    *ptr_start = el_ptr + 1;
                     goto cleanup;
-                } else if (strncmp(el_ptr, "href=\"", 6) == 0) {
+                } else if (strncmp(el_ptr, href_attr_match, strlen(href_attr_match)) == 0) {
                     progress_step++;
-                    el_ptr += 5;
+                    el_ptr += strlen(href_attr_match) - 1;
                     capturing_arg = "href";
                 } else if (strncmp(el_ptr, "type=\"", 6) == 0) {
                     progress_step++;
@@ -141,26 +153,27 @@ cleanup:
     vec_deinit(capture_vec);
 }
 
-void capture_hrefs_from_html(
+
+void search_html_hrefs(
     const char* data,
     int size,
-    const char* page_url,
-    int depth_level,
-    void(*callback)(const char*, int, char*, HrefType)
+    void(*callback)(const char* href, HrefType ht, void* ctx),
+    void* ctx
 ) {
+
     char* el_ptr = (char*)data;
     while ((el_ptr - data) < size) {
         if (strncmp(el_ptr, "<a", 2) == 0) {
-            parse_html_elem(&el_ptr, "a", page_url, depth_level, callback);
+            parse_html_elem(&el_ptr, "a", "href", callback, ctx);
         }
         if (strncmp(el_ptr, "<link", 5) == 0) {
-            parse_html_elem(&el_ptr, "link", page_url, depth_level, callback);
+            parse_html_elem(&el_ptr, "link", "href", callback, ctx);
         }
         if (strncmp(el_ptr, "<img", 4) == 0) {
-            parse_html_elem(&el_ptr, "img", page_url, depth_level, callback);
+            parse_html_elem(&el_ptr, "img", "src", callback, ctx);
         }
         if (strncmp(el_ptr, "<script", 7) == 0) {
-            parse_html_elem(&el_ptr, "script", page_url, depth_level, callback);
+            parse_html_elem(&el_ptr, "script", "src", callback, ctx);
         }
         el_ptr++;
     }

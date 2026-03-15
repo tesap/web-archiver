@@ -6,10 +6,9 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <assert.h>
 
 #define BUFFER_SIZE 64
-
-bool ssl_initialized = false;
 
 int create_tcp_socket(const char* hostname, const char* service) {
     struct addrinfo hints, *addrinfo_result;
@@ -53,7 +52,17 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
 
     char request[1024];
 
-    snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", url_parts.path, url_parts.host);
+    assert(url_parts.path != NULL);
+    assert(url_parts.host != NULL);
+    assert(strlen(url_parts.host) > 0);
+
+    char* path;
+    if (strlen(url_parts.path) > 0) {
+        path = url_parts.path;
+    } else {
+        path = "/";
+    }
+    snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path, url_parts.host);
     // printf("REQUEST: %s\n", request);
     fflush(stdout);
 
@@ -62,7 +71,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     int bytes_received;
     struct vec* tcp_data_vec = vec_init(0);
         
-    if (strcmp(url_parts.protocol, "http") == 0 || strlen(url_parts.protocol) == 0) {
+    if (strcmp(url_parts.protocol, "http://") == 0 || strlen(url_parts.protocol) == 0) {
         sockfd = create_tcp_socket(url_parts.host, "80");
 
         // --- Send request ---
@@ -73,15 +82,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
             vec_append(tcp_data_vec, recv_buff, bytes_received);
         }
         vec_append(tcp_data_vec, "\0", 1);
-    } else if (strcmp(url_parts.protocol, "https") == 0) {
-        if (!ssl_initialized) {
-            SSL_library_init();
-            SSL_load_error_strings();
-            OpenSSL_add_all_algorithms();
-            ssl_initialized = true;
-            // TODO do we need to deinit ssl?
-        }
-
+    } else if (strcmp(url_parts.protocol, "https://") == 0) {
         sockfd = create_tcp_socket(url_parts.host, "443");
 
         SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());

@@ -21,8 +21,8 @@
     } \
 
 TEST_UTIL_READ_FILE(1, "non-existing-path", -1, "");
-TEST_UTIL_READ_FILE(2, "./out/files/test_util_1.txt", 0, "123\n");
-TEST_UTIL_WRITE_FILE(3, "./out/files/test_util_1_write.txt", "12345\n", 0);
+TEST_UTIL_READ_FILE(2, "./out/files/test_util_1.txt", 4, "123\n");
+TEST_UTIL_WRITE_FILE(3, "./out/files/test_util_1_write.txt", "12345\n", 6);
 
 int main() {
     RUN_TEST(util_1);

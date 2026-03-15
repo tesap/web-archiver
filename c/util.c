@@ -79,16 +79,16 @@ size_t get_file_size(const char* path) {
     return st.st_size;
 }
 
-void debug_string(const char *str, const char *name) {
+void debug_string(const char *ptr, int size, const char *name) {
     printf("%s: '", name);
-    for (size_t i = 0; str[i]; i++) {
-        if (str[i] >= 32 && str[i] <= 126) {
-            printf("%c", str[i]);
+    for (int i = 0; i < size; i++) {
+        if (ptr[i] >= 32 && ptr[i] <= 126) {
+            printf("%c", ptr[i]);
         } else {
-            printf("\\x%02X", (unsigned char)str[i]);
+            printf("\\x%02X", (unsigned char)ptr[i]);
         }
     }
-    printf("' (length: %zu)\n", strlen(str));
+    printf("' (length: %zu)\n", strlen(ptr));
 }
 
 size_t strlen_with_delims(const char *s) {
@@ -125,7 +125,7 @@ int read_file(const char* path, char** out) {
     (*out)[size] = '\0';
 
     close(fd);
-    return 0;
+    return offset;
 }
 
 int write_file(const char* path, const char* buff, const size_t buff_size) {
@@ -140,6 +140,6 @@ int write_file(const char* path, const char* buff, const size_t buff_size) {
         perror("write");
         return -1;
     }
-    return 0;
+    return written;
 }
 

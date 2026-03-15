@@ -14,7 +14,7 @@ bool is_url_relative(const char* url) {
     return strncmp(url, "/", 1) == 0;
 }
 
-bool is_url_http(char* url) {
+bool is_url_http(const char* url) {
     /*
      * Tells whether a URL is http/https.
      */
@@ -29,8 +29,8 @@ struct UrlPtrs get_url_pointers(const char* url) {
     for (i = url; *i != '\0' && (strchr("$?#\n\r ", *i) == 0); i++) {
         if (strncmp(i, "://", 3) == 0) {
             res.protocol_start = url;
-            res.protocol_end = i;
             i += 3;
+            res.protocol_end = i;
             res.host_start = i;
         // Have not been encountered '/' before
         } else if (*i == '/' && !res.path_start) {

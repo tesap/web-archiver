@@ -2,6 +2,8 @@
 
 ## TODO
 
+- Common
+    - [ ] Fix long connect time
 - `hrefs_crawler`:
     - [x] Replace dependency on libcurl with manual HTTP/SSL file download with libssl + sockets
     - [ ] Parse content type header to filter out non-html files

@@ -21,7 +21,7 @@ TEST(url_parser_1) {
     char* url = "https://archlinux.org/asdf/we32";
     struct UrlPtrs ptrs = get_url_pointers(url);
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
-    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 5);
+    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_end, url + 21);
     ASSERT_EQUAL_INT(ptrs.path_start, url + 21);
@@ -32,7 +32,7 @@ TEST(url_parser_2) {
     char* url = "https://archlinux.org/asdf/we32\n\r";
     struct UrlPtrs ptrs = get_url_pointers(url);
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
-    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 5);
+    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_end, url + 21);
     ASSERT_EQUAL_INT(ptrs.path_start, url + 21);
@@ -43,7 +43,7 @@ TEST(url_parser_3) {
     char* url = "https://archlinux.org/asdf/we32#ASDF";
     struct UrlPtrs ptrs = get_url_pointers(url);
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
-    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 5);
+    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_end, url + 21);
     ASSERT_EQUAL_INT(ptrs.path_start, url + 21);
@@ -76,7 +76,7 @@ TEST(url_parser_6) {
     char* url = "https://archlinux.org";
     struct UrlPtrs ptrs = get_url_pointers(url);
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
-    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 5);
+    ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_end, url + 21);
     ASSERT_EQUAL_INT(ptrs.path_start, NULL);
@@ -97,14 +97,14 @@ TEST(url_parser_7) {
 
 TEST_URL_PARSER(8, "/sdfsd/123/sdfsd/", "", "", "/sdfsd/123/sdfsd/");
 TEST_URL_PARSER(9, "/", "", "", "/");
-TEST_URL_PARSER(10, "https://archlinux.org", "https", "archlinux.org", "");
-TEST_URL_PARSER(11, "http://archlinux.org/some/path/long#SDF", "http", "archlinux.org", "/some/path/long");
-TEST_URL_PARSER(12, "http://sub2.sub-sdf.archlinux.org", "http", "sub2.sub-sdf.archlinux.org", "");
-TEST_URL_PARSER(13, "http://archlinux.org#SDF", "http", "archlinux.org", "");
+TEST_URL_PARSER(10, "https://archlinux.org", "https://", "archlinux.org", "");
+TEST_URL_PARSER(11, "http://archlinux.org/some/path/long#SDF", "http://", "archlinux.org", "/some/path/long");
+TEST_URL_PARSER(12, "http://sub2.sub-sdf.archlinux.org", "http://", "sub2.sub-sdf.archlinux.org", "");
+TEST_URL_PARSER(13, "http://archlinux.org#SDF", "http://", "archlinux.org", "");
 TEST_URL_PARSER(14, "archlinux.org?SDF", "", "archlinux.org", "");
 TEST_URL_PARSER(15, "0.0.0.0:1234/path/234", "", "0.0.0.0:1234", "/path/234");
-TEST_URL_PARSER(16, "http://archlinux.org/\n", "http", "archlinux.org", "/");
-TEST_URL_PARSER(17, "http://archlinux.org/\r", "http", "archlinux.org", "/");
+TEST_URL_PARSER(16, "http://archlinux.org/\n", "http://", "archlinux.org", "/");
+TEST_URL_PARSER(17, "http://archlinux.org/\r", "http://", "archlinux.org", "/");
 
 int main() {
     RUN_TEST(url_parser_1);
