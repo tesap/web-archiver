@@ -32,12 +32,14 @@ struct UrlPtrs get_url_pointers(const char* url) {
             i += 3;
             res.protocol_end = i;
             res.host_start = i;
+        } else if (*i == ':') {
+            res.host_end = i;
         // Have not been encountered '/' before
         } else if (*i == '/' && !res.path_start) {
             if (!res.host_start && i > url) {
                 res.host_start = url;
             }
-            if (res.host_start) {
+            if (!res.host_end && res.host_start) {
                 res.host_end = i;
             }
             res.path_start = i;

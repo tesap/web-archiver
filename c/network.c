@@ -10,6 +10,38 @@
 
 #define BUFFER_SIZE 64
 
+void print_sockaddr(struct sockaddr* sa) {
+    char ip_string[INET6_ADDRSTRLEN];
+    void *addr_ptr;
+    in_port_t port;
+
+    if (sa->sa_family == AF_INET) {
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *)sa;
+        addr_ptr = &(ipv4->sin_addr);
+        port = ntohs(ipv4->sin_port);
+
+        if (inet_ntop(AF_INET, addr_ptr, ip_string, INET6_ADDRSTRLEN) == NULL) {
+            perror("inet_ntop");
+            return;
+        }
+        printf("IPv4 Address: %s, Port: %d\n", ip_string, port);
+
+    } else if (sa->sa_family == AF_INET6) {
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)sa;
+        addr_ptr = &(ipv6->sin6_addr);
+        port = ntohs(ipv6->sin6_port);
+
+        if (inet_ntop(AF_INET6, addr_ptr, ip_string, INET6_ADDRSTRLEN) == NULL) {
+            perror("inet_ntop");
+            return;
+        }
+        printf("IPv6 Address: %s, Port: %d\n", ip_string, port);
+
+    } else {
+        printf("Unknown address family: %d\n", sa->sa_family);
+    }
+}
+
 int create_tcp_socket(const char* hostname, const char* service) {
     struct addrinfo hints, *addrinfo_result;
     int status;
@@ -26,6 +58,8 @@ int create_tcp_socket(const char* hostname, const char* service) {
 
     int sockfd = -1;
     for (struct addrinfo* p = addrinfo_result; p != NULL; p = p->ai_next) {
+        // print_sockaddr(p->ai_addr);
+
         sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (sockfd == -1) {
 			perror("socket");
@@ -144,7 +178,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     if (status_code == 0) {
         fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, tcp_data);
         return -1;
-    } else if (status_code == 301) {
+    } else if (status_code == 301 || status_code == 302) {
         char redirect_url[256];
         if (get_location_header(tcp_data, url, redirect_url) != 0) {
             return -1;

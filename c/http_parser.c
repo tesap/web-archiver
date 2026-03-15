@@ -20,8 +20,11 @@ const char* get_content_start(const char* response) {
 int get_location_header(const char* response, const char* request_url, char* result) {
     const char* header_start = strstr(response, "Location: ");
     if (!header_start) {
-        fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
-        return -1;
+        header_start = strstr(response, "location: ");
+        if (!header_start) {
+            fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
+            return -1;
+        }
     }
 
     const char* value_start = header_start + 10;

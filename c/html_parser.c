@@ -8,17 +8,11 @@
 
 void print_href_type(HrefType ht) {
     switch (ht) {
-        case HREF_TYPE_UNKNOWN: printf("---- HREF_TYPE_UNKNOWN\n"); break;
-        case HREF_TYPE_IMG: printf("---- HREF_TYPE_IMG\n"); break;
-        case HREF_TYPE_STYLE: printf("---- HREF_TYPE_STYLE\n"); break;
-        case HREF_TYPE_SCRIPT: printf("---- HREF_TYPE_SCRIPT\n"); break;
-        case HREF_TYPE_HTML: printf("---- HREF_TYPE_HTML\n"); break;
-    }
-}
-
-void skip_spaces(char** ptr) {
-    while (**ptr == ' ' || **ptr == '\n') {
-        (*ptr)++;
+        case HREF_TYPE_UNKNOWN: printf("HREF_TYPE_UNKNOWN"); break;
+        case HREF_TYPE_IMG: printf("HREF_TYPE_IMG"); break;
+        case HREF_TYPE_STYLE: printf("HREF_TYPE_STYLE"); break;
+        case HREF_TYPE_SCRIPT: printf("HREF_TYPE_SCRIPT"); break;
+        case HREF_TYPE_HTML: printf("HREF_TYPE_HTML"); break;
     }
 }
 
@@ -96,12 +90,9 @@ void parse_html_elem(
     char href_attr_match[strlen(href_attr_name) + 3];
     sprintf(href_attr_match, "%s=\"", href_attr_name);
 
-    #define MAX_ELEM_SIZE 256
+    #define MAX_ELEM_SIZE 1024
     char* el_ptr = *ptr_start;
     while ((el_ptr - *ptr_start) < MAX_ELEM_SIZE) {
-        if (strncmp(el_ptr, "href=\"https://archlinux.org/iso", strlen("href=\"https://archlinux.org/iso")) == 0) {
-            printf("dd\n");
-        }
         switch (progress_step) {
             case 0:
                 // printf("---> \t2: (%.*s)\n", 10, el_ptr);
