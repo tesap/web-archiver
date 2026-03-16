@@ -102,7 +102,7 @@ void parse_html_elem(
                         (*callback)(href_arg, ht, ctx);
                     }
 
-                    *ptr_start = el_ptr + 1;
+                    *ptr_start = el_ptr;
                     goto cleanup;
                 } else if (strncmp(el_ptr, href_attr_match, strlen(href_attr_match)) == 0) {
                     progress_step++;
