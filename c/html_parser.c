@@ -61,7 +61,7 @@ HrefType href_type(
     return HREF_TYPE_UNKNOWN;
 }
 
-void parse_html_elem(
+void parse_html_tag(
     char** ptr_start,
     const char* elem_name, // f.e. "a" or "script" or "link"
     const char* href_attr_name, // f.e. "href" or "src"
@@ -90,9 +90,8 @@ void parse_html_elem(
     char href_attr_match[strlen(href_attr_name) + 3];
     sprintf(href_attr_match, "%s=\"", href_attr_name);
 
-    #define MAX_ELEM_SIZE 1024
     char* el_ptr = *ptr_start;
-    while ((el_ptr - *ptr_start) < MAX_ELEM_SIZE) {
+    while ((el_ptr - *ptr_start) < MAX_HTML_TAG_LENGTH) {
         switch (progress_step) {
             case 0:
                 // printf("---> \t2: (%.*s)\n", 10, el_ptr);
@@ -145,7 +144,7 @@ cleanup:
 }
 
 
-void search_html_hrefs(
+void search_resource_urls(
     const char* data,
     int size,
     void(*callback)(const char* href, HrefType ht, void* ctx),
@@ -155,16 +154,16 @@ void search_html_hrefs(
     char* el_ptr = (char*)data;
     while ((el_ptr - data) < size) {
         if (strncmp(el_ptr, "<a", 2) == 0) {
-            parse_html_elem(&el_ptr, "a", "href", callback, ctx);
+            parse_html_tag(&el_ptr, "a", "href", callback, ctx);
         }
         if (strncmp(el_ptr, "<link", 5) == 0) {
-            parse_html_elem(&el_ptr, "link", "href", callback, ctx);
+            parse_html_tag(&el_ptr, "link", "href", callback, ctx);
         }
         if (strncmp(el_ptr, "<img", 4) == 0) {
-            parse_html_elem(&el_ptr, "img", "src", callback, ctx);
+            parse_html_tag(&el_ptr, "img", "src", callback, ctx);
         }
         if (strncmp(el_ptr, "<script", 7) == 0) {
-            parse_html_elem(&el_ptr, "script", "src", callback, ctx);
+            parse_html_tag(&el_ptr, "script", "src", callback, ctx);
         }
         el_ptr++;
     }

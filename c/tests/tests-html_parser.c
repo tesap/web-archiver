@@ -57,7 +57,7 @@ TEST(html_parser_1) {
     int size = read_file(path, &buff);
 
     int href_index = 0;
-    search_html_hrefs(buff, size, html_parser_1_callback, &href_index);
+    search_resource_urls(buff, size, html_parser_1_callback, &href_index);
 }
 
 struct HrefAttrs test2_ha_list[] = {
@@ -79,7 +79,7 @@ TEST(html_parser_2) {
     char* buff = "<a href=\"HREF1\"/><a href=\"HREF2\"/>";
 
     int href_index = 0;
-    search_html_hrefs(buff, strlen(buff), html_parser_2_callback, &href_index);
+    search_resource_urls(buff, strlen(buff), html_parser_2_callback, &href_index);
     ASSERT_EQUAL_INT(href_index, test2_ha_list_size);
 }
 
@@ -88,6 +88,7 @@ TEST(html_parser_4) { ASSERT_EQUAL_INT(href_type("/feed/packages/", NULL, "a"), 
 TEST(html_parser_5) { ASSERT_EQUAL_INT(href_type("#title-anything", NULL, "a"), HREF_TYPE_HTML); }
 TEST(html_parser_6) { ASSERT_EQUAL_INT(href_type("magnet:?xt=urn:btih:a4373c326657898d0c588c3ff892a0fac97ffa20&amp;dn=archlinux-2026.03.01-x86_64.iso", NULL, "a"), HREF_TYPE_UNKNOWN); }
 TEST(html_parser_7) { ASSERT_EQUAL_INT(href_type("mailto:jvinet@zeroflux.org", NULL, "a"), HREF_TYPE_UNKNOWN); }
+TEST(html_parser_8) { ASSERT_EQUAL_INT(href_type("https://stackoverflow.com/Content/Sites/stackoverflow/Img/apple-touch-icon.png?v=9168b8ec82a5", NULL, "link"), HREF_TYPE_IMG); }
 
 int main() {
     RUN_TEST(html_parser_1);
@@ -96,4 +97,6 @@ int main() {
     RUN_TEST(html_parser_4);
     RUN_TEST(html_parser_5);
     RUN_TEST(html_parser_6);
+    RUN_TEST(html_parser_7);
+    RUN_TEST(html_parser_8);
 }

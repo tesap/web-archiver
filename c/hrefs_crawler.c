@@ -17,10 +17,6 @@
 #include "./network.h"
 #include "./util.h"
 
-#define DEFAULT_DEPTH_LEVEL 1
-#define DEFAULT_REQUEST_PERIOD 50
-#define DEFAULT_REQUEST_TIMEOUT 3000
-
 typedef enum {
     DOMAIN_FILTER_NO,
     DOMAIN_FILTER_SAME,
@@ -56,20 +52,17 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
      * The function takes ownership of @found_url, i.e. it frees it at the end.
      */
 
-    FoundUrlCallbackCtx* capture_ctx = (FoundUrlCallbackCtx*)ctx;
+    struct FoundUrlCallbackCtx* capture_ctx = (struct FoundUrlCallbackCtx*)ctx;
     const char* page_url = capture_ctx->page_url;
     int depth_level = capture_ctx->depth_level;
     char* result_url = NULL;
-
-    if (ht != HREF_TYPE_HTML) {
-        goto cleanup;
-    }
 
     assert(page_url != NULL);
     assert(found_url != NULL);
     assert(strlen(page_url) != 0);
     assert(strlen(found_url) != 0);
 
+    bool free_result_url = false;
     if (is_url_http(found_url)) {
         // Conversion: result_url is not changed further, needed for else branch
         result_url = (char*)found_url;
@@ -84,6 +77,7 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
 
         sprintf(full_url, "%s%s%s", protocol, host, found_url);
         result_url = full_url;
+        free_result_url = true;
     } else {
         // URL does not match needed criterias
         goto cleanup;
@@ -110,15 +104,22 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
     }
 
     // Finally print URL to stdout
-    printf("%s\n", result_url);
+    switch (ht) {
+        case HREF_TYPE_UNKNOWN: printf("UNKNOWN"); break;
+        case HREF_TYPE_IMG: printf("IMAGE"); break;
+        case HREF_TYPE_STYLE: printf("STYLE"); break;
+        case HREF_TYPE_SCRIPT: printf("SCRIPT"); break;
+        case HREF_TYPE_HTML: printf("HTML"); break;
+    }
+    printf("\t%s\n", result_url);
 
-    // Crawl URLs recursively
-    crawl_urls(result_url, depth_level - 1);
+    if (ht == HREF_TYPE_HTML) {
+        // Crawl URLs recursively
+        crawl_urls(result_url, depth_level - 1);
+    }
 
 cleanup:
-    // printf("==== FREE: %p, %s\n", found_url, found_url);
-    // fflush(stdout);
-    if (result_url && result_url != found_url) {
+    if (free_result_url) {
         free(result_url);
     }
 }
@@ -144,11 +145,11 @@ void crawl_urls(const char* url, int depth_level) {
         &downloaded_page
     );
     if (res == 0) {
-        FoundUrlCallbackCtx ctx = { 
+        struct FoundUrlCallbackCtx ctx = { 
             downloaded_page.effective_url,
             depth_level,
         };
-        search_html_hrefs(
+        search_resource_urls(
             downloaded_page.data_vec->ptr + downloaded_page.content_offset,
             downloaded_page.data_vec->size - downloaded_page.content_offset,
             on_found_url_callback,

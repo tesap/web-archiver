@@ -96,7 +96,13 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     } else {
         path = "/";
     }
-    snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path, url_parts.host);
+    // Mimic to cURL
+    const char* request_template = ""
+        "GET %s HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "User-Agent: curl/8.18.0\r\n"
+        "Connection: close\r\n\r\n";
+    snprintf(request, sizeof(request), request_template, path, url_parts.host);
     // printf("REQUEST: %s\n", request);
     fflush(stdout);
 
@@ -196,6 +202,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         out->effective_url[len] = '\0';
         return 0;
     } else {
+        fprintf(stderr, "RESPONSE: %.512s\n", tcp_data);
         fprintf(stderr, "=== Bad status_code: %d\n", status_code);
         return -1;
     }

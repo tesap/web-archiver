@@ -1,4 +1,9 @@
 
+## Description
+
+This is a collection of Unix-style programs that being combined allow to **recursively crawl given URL**. This means downloading HTML pages + corresponding resources (images, CSS, JS scripts).
+
+Code: Written in modern C, compiled with g++ (C++ compiler)
 
 ## TODO
 
