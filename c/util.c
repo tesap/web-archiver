@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h> 
 #include <unistd.h>
 
 #include "util.h"
@@ -141,5 +143,25 @@ int write_file(const char* path, const char* buff, const size_t buff_size) {
         return -1;
     }
     return written;
+}
+
+bool mkdir_p(const char* dir) {
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        perror("fork failed");
+        return false;
+    }
+
+    if (pid == 0) {
+        // Child process
+        execlp("mkdir", "mkdir", "-p", dir, NULL);
+        perror("exec failed");
+        exit(1);
+    } else {
+        // Parent process
+        wait(NULL);
+        return true;
+    }
 }
 

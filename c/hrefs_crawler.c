@@ -44,6 +44,20 @@ struct cmd_args cmd_args = {
     .filter_type = DOMAIN_FILTER_NO,
 };
 
+void save_downloaded_page(const struct HttpPage* hp) {
+    const char* url = hp->effective_url;
+    struct UrlPaths paths;
+    parse_url_paths(url, &paths);
+
+    // Create needed directory
+    mkdir_p(paths.dir_path);
+    // Save file to FS
+    write_file(
+        paths.file_path, 
+        hp->data_vec->ptr + hp->content_offset,
+        hp->data_vec->size - hp->content_offset
+    );
+}
 
 void crawl_urls(const char* url, int depth_level);
 
@@ -68,7 +82,7 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
         result_url = (char*)found_url;
     } else if (is_url_relative(found_url)) {
         struct UrlParts p_page;
-        parse_url(page_url, &p_page);
+        parse_url_parts(page_url, &p_page);
         char* protocol = p_page.protocol;
         char* host = p_page.host;
         
@@ -85,8 +99,8 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
 
     if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
         struct UrlParts p_result, p_page;
-        parse_url(result_url, &p_result);
-        parse_url(page_url, &p_page);
+        parse_url_parts(result_url, &p_result);
+        parse_url_parts(page_url, &p_page);
         if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
             if (strcmp(p_result.host, p_page.host) != 0) {
                 goto cleanup;
@@ -145,6 +159,9 @@ void crawl_urls(const char* url, int depth_level) {
         &downloaded_page
     );
     if (res == 0) {
+        // Save page to FS
+        save_downloaded_page(&downloaded_page);
+
         struct FoundUrlCallbackCtx ctx = { 
             downloaded_page.effective_url,
             depth_level,

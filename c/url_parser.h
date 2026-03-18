@@ -14,8 +14,14 @@ struct UrlParts {
     char path[1024];
 };
 
-struct UrlPtrs get_url_pointers(const char* url);
-void parse_url(const char* url, struct UrlParts* parts);
+struct UrlPaths {
+    char dir_path[256];
+    char file_path[256];
+};
 
 bool is_url_relative(const char* url);
 bool is_url_http(const char* url);
+
+struct UrlPtrs get_url_pointers(const char* url);
+void parse_url_parts(const char* url, struct UrlParts* parts);
+void parse_url_paths(const char* url, struct UrlPaths* out);

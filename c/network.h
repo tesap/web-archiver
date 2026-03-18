@@ -1,3 +1,5 @@
+#ifndef NETWORK_H
+#define NETWORK_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,3 +16,5 @@ struct HttpPage {
 
 int create_tcp_socket(const char* hostname, const char* service);
 int download_http(const char* url, int timeout_sec, struct HttpPage* res_page);
+
+#endif

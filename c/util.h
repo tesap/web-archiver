@@ -16,3 +16,5 @@ size_t strlen_with_delims(const char *s);
 
 int read_file(const char* path, char** out);
 int write_file(const char* path, const char* buff, size_t buff_size);
+
+bool mkdir_p(const char* dir);
