@@ -59,6 +59,10 @@ bool is_number(const char* s) {
     return true;
 }
 
+bool is_alphabet(char c) {
+    return strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", c) != NULL;
+}
+
 bool ends_with(const char* str, const char* suffix) {
     // If the suffix is longer than the string, it cannot be a suffix.
     int len_suffix = strlen(suffix);

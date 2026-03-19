@@ -107,7 +107,7 @@ void parse_url_paths(const char* url, struct UrlPaths* out) {
     // Find last '/' occurence
     int i = url_path_len;
     while (i > 0) {
-        if (url_path[i] == '.') {
+        if (url_path[i] == '.' && is_alphabet(url_path[i + 1])) {
             is_file = true;
         }
         else if (url_path[i] == '/') {

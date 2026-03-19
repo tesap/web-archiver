@@ -10,6 +10,7 @@ void vec_deinit(struct vec* v);
 void vec_append(struct vec* v, const char* recv_buff, size_t newsize);
 
 bool is_number(const char* s);
+bool is_alphabet(char c);
 bool ends_with(const char* str, const char* suffix);
 void debug_string(const char *str, int size, const char *name);
 size_t strlen_with_delims(const char *s);
