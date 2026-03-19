@@ -10,8 +10,8 @@
 
 struct HttpPage {
     char effective_url[256];
-    struct vec* data_vec;
-    int content_offset; // Offset of HTTP content inside data_vec
+    struct vec* headers_vec;
+    struct vec* content_vec;
 };
 
 int create_tcp_socket(const char* hostname, const char* service);

@@ -190,15 +190,13 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
         return download_http(redirect_url, timeout_sec, out);
     } else if (status_code == 200) {
-        // char filename[256];
-        // sprintf(filename, "%s22.http", url_parts.host);
-        // write_file(filename, tcp_data, tcp_data_vec->size);
-        out->data_vec = content_vec;
-        // out->content_offset = get_content_start(tcp_data) - tcp_data;
-        int len = strlen(url);
+        out->headers_vec = headers_vec;
+        out->content_vec = content_vec;
 
+        int len = strlen(url);
         memcpy(out->effective_url, url, len);
         out->effective_url[len] = '\0';
+
         return 0;
     } else {
         fprintf(stderr, "RESPONSE: %.*s\n", headers_vec->size, headers_vec->ptr);
