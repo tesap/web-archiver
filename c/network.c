@@ -184,6 +184,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         return -1;
     } else if (status_code == 301 || status_code == 302) {
         char redirect_url[256];
+        vec_append(headers_vec, "\0", 1);
         if (get_location_header(headers_vec->ptr, url, redirect_url) != 0) {
             return -1;
         }

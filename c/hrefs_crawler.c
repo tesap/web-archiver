@@ -15,6 +15,7 @@
 #include "./url_parser.h"
 #include "./html_parser.h"
 #include "./network.h"
+#include "./cached_network.h"
 #include "./util.h"
 
 typedef enum {
@@ -47,23 +48,6 @@ struct cmd_args cmd_args = {
     .is_save = false,
     .cache_ttl = 0,
 };
-
-void save_downloaded_page(const struct HttpPage* hp) {
-    const char* url = hp->effective_url;
-    struct UrlPaths paths;
-    parse_url_paths(url, &paths);
-
-    // Create needed directory
-    if (!mkdir_p(paths.dir_path)) {
-        return;
-    }
-    // Save file to FS
-    write_file(
-        paths.file_path, 
-        hp->content_vec->ptr,
-        hp->content_vec->size
-    );
-}
 
 void crawl_urls(const char* url, int depth_level);
 
@@ -144,38 +128,6 @@ cleanup:
     }
 }
 
-int cached_download_http(const char* url, int request_timeout, int is_save, int cache_ttl, struct HttpPage* out) {
-    struct UrlPaths paths;
-    parse_url_paths(url, &paths);
-    time_t cur_time = time(NULL);
-    time_t mtime = get_file_last_modified(paths.file_path);
-
-    if (file_exists(paths.file_path) && cache_ttl * 60 >= (cur_time - mtime)) {
-        fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit: %s (file: %s)\n" ANSI_COLOR_RESET, url, paths.file_path);
-        char* buff;
-        int size = read_file(paths.file_path, &buff);
-
-        out->content_vec = (struct vec*)malloc(sizeof(struct vec));
-        out->content_vec->ptr = buff;
-        out->content_vec->size = size;
-
-        memcpy(out->effective_url, url, strlen(url));
-        out->effective_url[strlen(url)] = '\0';
-        return 0;
-    }
-
-    fprintf(stderr, ANSI_COLOR_YELLOW "==== Cache miss: %s\n\t(file: %s)\n" ANSI_COLOR_RESET, url, paths.file_path);
-
-    int res = download_http(url, request_timeout / 1000, out);
-    if (res == 0) {
-        if (is_save) {
-            // Save page to FS
-            save_downloaded_page(out);
-        }
-    }
-    return res;
-}
-
 void crawl_urls(const char* url, int depth_level) {
     /*
      * The algorithm is:
@@ -187,9 +139,6 @@ void crawl_urls(const char* url, int depth_level) {
         return;
     }
 
-    // Wait period between network requests
-    usleep(cmd_args.request_period * 1000); 
-
     struct HttpPage downloaded_page;
     int res = cached_download_http(
         url,
@@ -199,7 +148,7 @@ void crawl_urls(const char* url, int depth_level) {
         &downloaded_page
     );
 
-    if (res == 0) {
+    if (res >= 0) {
         struct FoundUrlCallbackCtx ctx = { 
             downloaded_page.effective_url,
             depth_level,
@@ -212,8 +161,18 @@ void crawl_urls(const char* url, int depth_level) {
         );
 
         // Cleanup
-        vec_deinit(downloaded_page.headers_vec);
-        vec_deinit(downloaded_page.content_vec);
+        if (downloaded_page.headers_vec != NULL) {
+            vec_deinit(downloaded_page.headers_vec);
+        }
+        if (downloaded_page.content_vec != NULL) {
+            vec_deinit(downloaded_page.content_vec);
+        }
+    }
+
+    // Page was downloaded from network
+    if (res == 0) {
+        // Wait period between network requests
+        usleep(cmd_args.request_period * 1000); 
     }
 }
 

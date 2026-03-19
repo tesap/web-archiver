@@ -13,7 +13,7 @@ all: ${OUT}/single_page ${OUT}/hrefs_crawler ${OUT}/tests-url_parser ${OUT}/test
 clean:
 	rm -rf ${OUT}
 
-${OUT}/hrefs_crawler: hrefs_crawler.c url_parser.c html_parser.c network.c util.c http_parser.c | out
+${OUT}/hrefs_crawler: hrefs_crawler.c url_parser.c html_parser.c network.c util.c http_parser.c cached_network.c | out
 	${GCC} ${FLAGS} $^ -o $@
 
 ${OUT}/single_page: single_page.c | out

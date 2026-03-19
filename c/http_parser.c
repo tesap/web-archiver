@@ -61,10 +61,10 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
     }
 }
 
-int get_location_header(const char* response, const char* request_url, char* result) {
-    const char* header_start = strstr(response, "Location: ");
+int get_location_header(const char* headers_buff, const char* request_url, char* result) {
+    const char* header_start = strstr(headers_buff, "Location: ");
     if (!header_start) {
-        header_start = strstr(response, "location: ");
+        header_start = strstr(headers_buff, "location: ");
         if (!header_start) {
             fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
             return -1;
