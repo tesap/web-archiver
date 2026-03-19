@@ -140,9 +140,10 @@ void crawl_urls(const char* url, int depth_level) {
     }
 
     struct HttpPage downloaded_page;
+    // TODO replace with fork(./cached_curl ...)
     int res = cached_download_http(
         url,
-        cmd_args.request_period,
+        cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
         &downloaded_page
@@ -183,7 +184,7 @@ void exit_args_error() {
     fprintf(stderr, "\t-d, --depth <val>\tLevel of recursion a crawler will dive into hrefs (default: %d)\n", DEFAULT_DEPTH_LEVEL);
     fprintf(stderr, "\t-p, --period <val>\tPeriod between TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_PERIOD);
     fprintf(stderr, "\t-t, --timeout <val>\tTimeout for TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_TIMEOUT);
-    fprintf(stderr, "\t--save\tSave downloaded pages to fs cache\n");
+    fprintf(stderr, "\t--save\t\t\tSave downloaded pages to fs cache\n");
     fprintf(stderr, "\t--cache-ttl <ttl>\tUse saved pages from fs to cache repeated requests, according to given TTL (Time to Live) of saved entries. 0 means each saved page is considered invalidated. TTL is in minutes (default: 0)\n");
     fprintf(stderr, "\t--filter-same-domain\tOnly account for URLs with the same domain as the initial URL\n");
     fprintf(stderr, "\t--filter-subdomain\tOnly account for URLs to subdomains to the domain of the initial URL\n");

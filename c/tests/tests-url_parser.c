@@ -121,6 +121,8 @@ TEST_PARSE_PATHS(20, "https://archlinux.org/releases/page.html",    "archlinux.o
 TEST_PARSE_PATHS(21, "https://archlinux.org/",                      "archlinux.org",                    "archlinux.org/index.html");
 TEST_PARSE_PATHS(22, "https://archlinux.org",                       "archlinux.org",                    "archlinux.org/index.html");
 TEST_PARSE_PATHS(23, "https://archlinux.org/packages/webkitgtk-6.0",      "archlinux.org/packages/webkitgtk-6.0",        "archlinux.org/packages/webkitgtk-6.0/index.html");
+TEST_PARSE_PATHS(24, "archlinux.org/static/archweb.css",      "archlinux.org/static",        "archlinux.org/static/archweb.css");
+
 
 int main() {
     RUN_TEST(url_parser_1);
@@ -147,4 +149,5 @@ int main() {
     RUN_TEST(url_parser_21);
     RUN_TEST(url_parser_22);
     RUN_TEST(url_parser_23);
+    RUN_TEST(url_parser_24);
 }

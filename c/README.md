@@ -18,9 +18,10 @@ Code: Written in modern C, compiled with g++ (C++ compiler)
     - [ ] Caching for downloaded URIs. Track HashMap of crawled URLs to avoid redundant TCP requests
     - [x] Fs-caching of downloaded pages
     - [x] Add (URL -> path) parsing + tests 
-- `my_curl`: Downloads a given URL to a given path
-    - [ ] Implement writing file to FS.
-    - [ ] Try replacing it with cURL
+- `cached_curl`: Downloads a given URL to a given path
+    - [x] Implement writing file to FS.
+    - [ ] Rely on HTTP headers to better determine dir/file category (content-type header). Make it a file only in case non text/html
+    - [-] Try replacing it with cURL
 - `html_paths_corrector`
     - [ ] Implement links replacement to relative paths in HTML page
 - `master`: A master process that combines all programs together

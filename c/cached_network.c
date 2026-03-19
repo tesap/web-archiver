@@ -5,23 +5,6 @@
 #include "./util.h"
 #include "./url_parser.h"
 
-void save_downloaded_page(const struct HttpPage* hp) {
-    const char* url = hp->effective_url;
-    struct UrlPaths paths;
-    parse_url_paths(url, &paths);
-
-    // Create needed directory
-    if (!mkdir_p(paths.dir_path)) {
-        return;
-    }
-    // Save file to FS
-    write_file(
-        paths.file_path, 
-        hp->content_vec->ptr,
-        hp->content_vec->size
-    );
-}
-
 int cached_download_http(const char* url, int request_timeout, int is_save, int cache_ttl, struct HttpPage* out) {
     struct UrlPaths paths;
     parse_url_paths(url, &paths);
@@ -50,7 +33,25 @@ int cached_download_http(const char* url, int request_timeout, int is_save, int 
     if (res == 0) {
         if (is_save) {
             // Save page to FS
-            save_downloaded_page(out);
+            const char* url = out->effective_url;
+            struct UrlPaths paths;
+            parse_url_paths(url, &paths);
+
+            // Create needed directory
+            int ok = mkdir_p(paths.dir_path);
+
+            if (ok) {
+                // Save file to FS
+                ok = write_file(
+                    paths.file_path,
+                    out->content_vec->ptr,
+                    out->content_vec->size
+                );
+            }
+
+            if (!ok) {
+                fprintf(stderr, ANSI_COLOR_RED "==== Could not save file: %s\n" ANSI_COLOR_RESET, paths.file_path);
+            }
         }
     }
     return res;

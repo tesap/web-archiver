@@ -8,7 +8,7 @@ GCC=g++
 
 .PHONY: ${OUT} clean
 
-all: ${OUT}/single_page ${OUT}/hrefs_crawler ${OUT}/tests-url_parser ${OUT}/tests-http_parser ${OUT}/tests-util ${OUT}/tests-html_parser
+all: ${OUT}/cached_curl ${OUT}/hrefs_crawler ${OUT}/tests-url_parser ${OUT}/tests-http_parser ${OUT}/tests-util ${OUT}/tests-html_parser
 
 clean:
 	rm -rf ${OUT}
@@ -16,7 +16,7 @@ clean:
 ${OUT}/hrefs_crawler: hrefs_crawler.c url_parser.c html_parser.c network.c util.c http_parser.c cached_network.c | out
 	${GCC} ${FLAGS} $^ -o $@
 
-${OUT}/single_page: single_page.c | out
+${OUT}/cached_curl: http_parser.c network.c url_parser.c cached_network.c util.c cached_curl.c | out
 	${GCC} ${FLAGS} $^ -o $@
     
 ${OUT}/tests-url_parser: tests/tests-url_parser.c url_parser.c util.c | out

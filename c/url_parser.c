@@ -100,7 +100,7 @@ void parse_url_paths(const char* url, struct UrlPaths* out) {
     const int url_len = strlen(url);
     const int url_path_len = strlen(url_path);
 
-    char stripped_url[url_len];
+    char stripped_url[MAX_URL_LENGTH];
     sprintf(stripped_url, "%s%s", url_p.host, url_path);
 
     bool is_file = false;
