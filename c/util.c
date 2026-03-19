@@ -79,12 +79,20 @@ bool ends_with(const char* str, const char* suffix) {
 size_t get_file_size(const char* path) {
     struct stat st;
     if (stat(path, &st) != 0) {
-	return -1;
+        return -1;
     }
 
     return st.st_size;
 }
 
+time_t get_file_last_modified(const char* path) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return -1;
+    }
+
+    return st.st_mtime;
+}
 void debug_string(const char *ptr, int size, const char *name) {
     printf("%s: '", name);
     for (int i = 0; i < size; i++) {
@@ -105,6 +113,10 @@ size_t strlen_with_delims(const char *s) {
     return i - s;
 }
 
+bool file_exists(const char* path) {
+    return access(path, F_OK) == 0;
+}
+
 int read_file(const char* path, char** out) {
     /*
      * @out must be an uninitialized pointer;
@@ -117,7 +129,7 @@ int read_file(const char* path, char** out) {
 
     size_t size = get_file_size(path);
     if (size == -1) {
-	    fprintf(stderr, "=== Could not get file size: %s\n", path);
+        fprintf(stderr, ANSI_COLOR_RED "=== Could not get file size: %s\n" ANSI_COLOR_RESET, path);
         return -1;
     }
     

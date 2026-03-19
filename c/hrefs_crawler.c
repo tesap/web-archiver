@@ -29,6 +29,8 @@ struct cmd_args {
     int request_period;
     int request_timeout;
     DomainFilterType filter_type;
+    bool is_save;
+    int cache_ttl;
 };
 
 struct FoundUrlCallbackCtx {
@@ -42,6 +44,8 @@ struct cmd_args cmd_args = {
     .request_period = DEFAULT_REQUEST_PERIOD,
     .request_timeout = DEFAULT_REQUEST_TIMEOUT,
     .filter_type = DOMAIN_FILTER_NO,
+    .is_save = false,
+    .cache_ttl = 0,
 };
 
 void save_downloaded_page(const struct HttpPage* hp) {
@@ -50,7 +54,9 @@ void save_downloaded_page(const struct HttpPage* hp) {
     parse_url_paths(url, &paths);
 
     // Create needed directory
-    mkdir_p(paths.dir_path);
+    if (!mkdir_p(paths.dir_path)) {
+        return;
+    }
     // Save file to FS
     write_file(
         paths.file_path, 
@@ -151,6 +157,33 @@ void crawl_urls(const char* url, int depth_level) {
 
     struct HttpPage downloaded_page;
 
+    struct UrlPaths paths;
+    parse_url_paths(url, &paths);
+        time_t cur_time = time(NULL);
+        time_t mtime = get_file_last_modified(paths.file_path);
+
+    if (file_exists(paths.file_path) && cmd_args.cache_ttl * 60 >= (cur_time - mtime)) {
+        fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit: %s (file: %s)\n" ANSI_COLOR_RESET, url, paths.file_path);
+        char* buff;
+        int size = read_file(paths.file_path, &buff);
+
+        // TODO remove duplicated code
+        struct FoundUrlCallbackCtx ctx = { 
+            url,
+            depth_level,
+        };
+        search_resource_urls(
+            buff,
+            size,
+            on_found_url_callback,
+            &ctx
+        );
+        free(buff);
+        return;
+    } else {
+        fprintf(stderr, ANSI_COLOR_YELLOW "==== Cache miss: %s\n\t(file: %s)\n" ANSI_COLOR_RESET, url, paths.file_path);
+    }
+
     // Wait period between network requests
     usleep(cmd_args.request_period * 1000); 
     int res = download_http(
@@ -159,8 +192,10 @@ void crawl_urls(const char* url, int depth_level) {
         &downloaded_page
     );
     if (res == 0) {
-        // Save page to FS
-        save_downloaded_page(&downloaded_page);
+        if (cmd_args.is_save) {
+            // Save page to FS
+            save_downloaded_page(&downloaded_page);
+        }
 
         struct FoundUrlCallbackCtx ctx = { 
             downloaded_page.effective_url,
@@ -185,6 +220,8 @@ void exit_args_error() {
     fprintf(stderr, "\t-d, --depth <val>\tLevel of recursion a crawler will dive into hrefs (default: %d)\n", DEFAULT_DEPTH_LEVEL);
     fprintf(stderr, "\t-p, --period <val>\tPeriod between TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_PERIOD);
     fprintf(stderr, "\t-t, --timeout <val>\tTimeout for TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_TIMEOUT);
+    fprintf(stderr, "\t--save\tSave downloaded pages to fs cache\n");
+    fprintf(stderr, "\t--cache-ttl <ttl>\tUse saved pages from fs to cache repeated requests, according to given TTL (Time to Live) of saved entries. 0 means each saved page is considered invalidated. TTL is in minutes (default: 0)\n");
     fprintf(stderr, "\t--filter-same-domain\tOnly account for URLs with the same domain as the initial URL\n");
     fprintf(stderr, "\t--filter-subdomain\tOnly account for URLs to subdomains to the domain of the initial URL\n");
     exit(1);
@@ -202,6 +239,8 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
             {"depth-level",         required_argument, 0, 'd'},
             {"request-period",      required_argument, 0, 'p'},
             {"request-timeout",     required_argument, 0, 't'},
+            {"save",                no_argument, 0, 0},
+            {"cache-ttl",           required_argument, 0, 0},
             {"filter-same-domain",  no_argument, 0, 0},
             {"filter-subdomain",    no_argument, 0, 0},
             {0, 0, 0, 0}
@@ -218,8 +257,18 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
                 if (strcmp(long_options[longindex].name, "filter-same-domain") == 0) {
                     args->filter_type = DOMAIN_FILTER_SAME;
                 }
-                if (strcmp(long_options[longindex].name, "filter-subdomain") == 0) {
+                else if (strcmp(long_options[longindex].name, "filter-subdomain") == 0) {
                     args->filter_type = DOMAIN_FILTER_SUBDOMAIN;
+                }
+                else if (strcmp(long_options[longindex].name, "save") == 0) {
+                    args->is_save = true;
+                }
+                else if (strcmp(long_options[longindex].name, "cache-ttl") == 0) {
+                    if (!is_number(optarg)) {
+                        fprintf(stderr, ANSI_COLOR_RED "Error: argument is not a number: %s\n" ANSI_COLOR_RESET, optarg);
+                        exit(1);
+                    }
+                    args->cache_ttl = atoi(optarg);
                 }
                 break;
             case 'a':
@@ -234,7 +283,7 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
                     exit_args_error();
                 }
                 if (!is_number(optarg)) {
-                    fprintf(stderr, "Error: argument is not a number: %s\n", optarg);
+                    fprintf(stderr, ANSI_COLOR_RED "Error: argument is not a number: %s\n" ANSI_COLOR_RESET, optarg);
                     exit(1);
                 }
                 d_flag = true;
@@ -256,7 +305,7 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
                     exit_args_error();
                 }
                 if (!is_number(optarg)) {
-                    fprintf(stderr, "Error: argument is not a number: %s\n", optarg);
+                    fprintf(stderr, ANSI_COLOR_RED "Error: argument is not a number: %s\n" ANSI_COLOR_RESET, optarg);
                     exit_args_error();
                 }
                 t_flag = true;
@@ -271,7 +320,7 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
 
     // Assert required arguments
     if (!a_flag) {
-        fprintf(stderr, "Address argument is required\n");
+        fprintf(stderr, ANSI_COLOR_RED "Address argument is required\n" ANSI_COLOR_RESET);
         exit_args_error();
     }
 }

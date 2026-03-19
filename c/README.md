@@ -8,15 +8,22 @@ Code: Written in modern C, compiled with g++ (C++ compiler)
 ## TODO
 
 - Common
-    - [ ] Fix long connect time
+    - [x] Fix long connect time
     - [ ] network.c: Maybe we can cache socket connections in redirection cases to avoid double work
+    - [ ] Add logging functions
+    - [ ] Check for unfreed mallocs
 - `hrefs_crawler`:
     - [x] Replace dependency on libcurl with manual HTTP/SSL file download with libssl + sockets
-    - [ ] Parse content type header to filter out non-html files
+    - [x] Parse content type header to filter out non-html files
     - [ ] Caching for downloaded URIs. Track HashMap of crawled URLs to avoid redundant TCP requests
-- `single_page`:
-    - [x] Implement parsing of all resources hrefs. It is more complicated than plain hrefs capture
-    - [ ] Add tests for parsing
-    - [ ] Implement writing files to FS.
-    - [ ] Caching of downloaded URIs. Track HashMap of retreived files 
-    - [ ] Caching of files
+    - [x] Fs-caching of downloaded pages
+    - [x] Add (URL -> path) parsing + tests 
+- `my_curl`: Downloads a given URL to a given path
+    - [ ] Implement writing file to FS.
+    - [ ] Try replacing it with cURL
+- `html_paths_corrector`
+    - [ ] Implement links replacement to relative paths in HTML page
+- `master`: A master process that combines all programs together
+    - [ ] Implement simple logic of complete chain
+    - [ ] Support stateful
+    - [ ] Support service + public API
