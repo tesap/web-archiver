@@ -27,8 +27,8 @@ void vec_deinit(struct vec* v) {
 
 void vec_append(struct vec* v, const char* recv_buff, size_t newsize) {
     if (newsize <= 0) {
-        fprintf(stderr, "Error vec_append: newsize = %d\n", newsize);
-        exit(1);
+        // fprintf(stderr, ANSI_COLOR_RED "==== Error vec_append: newsize = %d\n" ANSI_COLOR_RESET, newsize);
+        return;
     }
     if (!v || !v->ptr) {
         fprintf(stderr, "v->ptr is NULL\n");

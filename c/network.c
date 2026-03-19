@@ -109,7 +109,9 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
     int sockfd;
     char recv_buff[BUFFER_SIZE];
     int bytes_received;
-    struct vec* tcp_data_vec = vec_init(0);
+    bool content_started = false;
+    struct vec* headers_vec = vec_init(0);
+    struct vec* content_vec = vec_init(0);
         
     if (strcmp(url_parts.protocol, "http://") == 0 || strlen(url_parts.protocol) == 0) {
         sockfd = create_tcp_socket(url_parts.host, "80");
@@ -119,9 +121,8 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
 
         // --- Receive response ---
         while ((bytes_received = recv(sockfd, recv_buff, BUFFER_SIZE - 1, 0)) > 0) {
-            vec_append(tcp_data_vec, recv_buff, bytes_received);
+            parse_http_stream_chunk(recv_buff, bytes_received, headers_vec, content_vec, &content_started);
         }
-        vec_append(tcp_data_vec, "\0", 1);
     } else if (strcmp(url_parts.protocol, "https://") == 0) {
         sockfd = create_tcp_socket(url_parts.host, "443");
 
@@ -163,9 +164,8 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
 
         while ((bytes_received = SSL_read(ssl, recv_buff, BUFFER_SIZE - 1)) > 0) {
-            vec_append(tcp_data_vec, recv_buff, bytes_received);
+            parse_http_stream_chunk(recv_buff, bytes_received, headers_vec, content_vec, &content_started);
         }
-        vec_append(tcp_data_vec, "\0", 1);
     } else {
         fprintf(stderr, "=== Protocol not supported: %s\n", url);
         return -1;
@@ -176,17 +176,15 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         return -1;
     }
 
-    const char* tcp_data = tcp_data_vec->ptr;
-
     // --- Parsing HTTP response ---
     int status_code = 0;
-    sscanf(tcp_data, "HTTP/%*d.%*d %d", &status_code);
+    sscanf(headers_vec->ptr, "HTTP/%*d.%*d %d", &status_code);
     if (status_code == 0) {
-        fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, tcp_data);
+        fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, headers_vec->ptr);
         return -1;
     } else if (status_code == 301 || status_code == 302) {
         char redirect_url[256];
-        if (get_location_header(tcp_data, url, redirect_url) != 0) {
+        if (get_location_header(headers_vec->ptr, url, redirect_url) != 0) {
             return -1;
         }
         // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
@@ -195,16 +193,17 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
         // char filename[256];
         // sprintf(filename, "%s22.http", url_parts.host);
         // write_file(filename, tcp_data, tcp_data_vec->size);
-        out->data_vec = tcp_data_vec;
-        out->content_offset = get_content_start(tcp_data) - tcp_data;
+        out->data_vec = content_vec;
+        // out->content_offset = get_content_start(tcp_data) - tcp_data;
         int len = strlen(url);
+
         memcpy(out->effective_url, url, len);
         out->effective_url[len] = '\0';
         return 0;
     } else {
-        fprintf(stderr, "RESPONSE: %.512s\n", tcp_data);
+        fprintf(stderr, "RESPONSE: %.*s\n", headers_vec->size, headers_vec->ptr);
         fprintf(stderr, "=== Bad status_code: %d\n", status_code);
-        write_file("err.http", tcp_data, tcp_data_vec->size);
+        write_file("err.http", headers_vec->ptr, headers_vec->size);
         return -1;
     }
 }

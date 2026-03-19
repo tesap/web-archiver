@@ -159,8 +159,8 @@ void crawl_urls(const char* url, int depth_level) {
 
     struct UrlPaths paths;
     parse_url_paths(url, &paths);
-        time_t cur_time = time(NULL);
-        time_t mtime = get_file_last_modified(paths.file_path);
+    time_t cur_time = time(NULL);
+    time_t mtime = get_file_last_modified(paths.file_path);
 
     if (file_exists(paths.file_path) && cmd_args.cache_ttl * 60 >= (cur_time - mtime)) {
         fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit: %s (file: %s)\n" ANSI_COLOR_RESET, url, paths.file_path);
