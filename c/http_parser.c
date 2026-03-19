@@ -37,6 +37,7 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
 
         int content_offset_in_buff = i + 4 - 3;
         *content_started = true;
+        printf("==== vec_append | 1\n");
         vec_append(
             content_vec,
             recv_buff + content_offset_in_buff,
@@ -48,6 +49,7 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
     char* pattern_ptr = (char*)memmem(recv_buff, size, "\r\n\r\n", 4);
     if (pattern_ptr != NULL) {
         size_t header_size_in_buff = pattern_ptr - recv_buff;
+        printf("==== vec_append | 2 | %d\n", header_size_in_buff);
         vec_append(
             headers_vec,
             recv_buff,
@@ -56,6 +58,7 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
 
         size_t content_offset_in_buff = header_size_in_buff + 4;
         *content_started = true;
+        printf("==== vec_append | 3 | %d, %d\n", content_offset_in_buff, size);
         vec_append(
             content_vec,
             recv_buff + content_offset_in_buff,
@@ -65,8 +68,10 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
     }
 
     if (*content_started) {
+        printf("==== vec_append | 3\n");
         vec_append(content_vec, recv_buff, size);
     } else {
+        printf("==== vec_append | 4\n");
         vec_append(headers_vec, recv_buff, size);
     }
 }

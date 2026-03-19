@@ -40,6 +40,73 @@ TEST_HTTP_PARSER_GET_LOCATION_HEADER_FILE(7, "./out/files/wiki.archlinux.org.htt
 TEST_HTTP_PARSER_GET_LOCATION_HEADER_FILE(8, "./out/files/archlinux.org.http", "archlinux.org", "https://archlinux.org/");
 TEST_HTTP_PARSER_GET_LOCATION_HEADER_FILE(9, "./out/files/lists.archlinux.org.http", "https://lists.archlinux.org", "https://lists.archlinux.org/mailman3/lists/");
 
+TEST(http_parser_10) {
+
+    struct vec* headers_vec = vec_init(0);
+    struct vec* content_vec = vec_init(0);
+    bool content_started = false;
+
+    char* buff = "abcdef";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+    buff = "ghijkl";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abcdefghijkl", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, false);
+
+    buff = "\r\n\r\n12345678";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abcdefghijkl", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "12345678", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, true);
+}
+
+TEST(http_parser_11) {
+
+    struct vec* headers_vec = vec_init(0);
+    struct vec* content_vec = vec_init(0);
+    bool content_started = false;
+
+    char* buff = "abc\r\n";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abc\r\n", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, false);
+
+    buff = "\r\n123";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abc", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "123", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, true);
+}
+
+TEST(http_parser_12) {
+
+    struct vec* headers_vec = vec_init(0);
+    struct vec* content_vec = vec_init(0);
+    bool content_started = false;
+
+    char* buff = "abcdef\r";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abcdef\r", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, false);
+
+    buff = "\n\r\n123";
+    parse_http_stream_chunk(buff, strlen(buff), headers_vec, content_vec, &content_started);
+
+    // TODO does not work
+    ASSERT_EQUAL_INT(headers_vec->size, 6);
+    ASSERT_EQUAL_STRN(headers_vec->ptr, "abcdef", headers_vec->size);
+    ASSERT_EQUAL_STRN(content_vec->ptr, "123", headers_vec->size);
+    ASSERT_EQUAL_INT(content_started, true);
+}
+
 int main() {
     // RUN_TEST(http_parser_1);
     // RUN_TEST(http_parser_2);
@@ -49,4 +116,8 @@ int main() {
     // RUN_TEST(http_parser_6);
     RUN_TEST(http_parser_7);
     RUN_TEST(http_parser_8);
+    RUN_TEST(http_parser_9);
+    RUN_TEST(http_parser_10);
+    RUN_TEST(http_parser_11);
+    RUN_TEST(http_parser_12);
 }
