@@ -109,7 +109,7 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
 
     // Finally print URL to stdout
     switch (ht) {
-        case HREF_TYPE_UNKNOWN: printf("UNKNOWN"); break;
+        case HREF_TYPE_UNKNOWN: printf("NO"); break;
         case HREF_TYPE_IMG: printf("IMAGE"); break;
         case HREF_TYPE_STYLE: printf("STYLE"); break;
         case HREF_TYPE_SCRIPT: printf("SCRIPT"); break;
@@ -146,6 +146,7 @@ void crawl_urls(const char* url, int depth_level) {
         cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
+        HREF_TYPE_HTML,
         &downloaded_page
     );
 

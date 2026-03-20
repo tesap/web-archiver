@@ -181,3 +181,9 @@ bool mkdir_p(const char* dir) {
     }
 }
 
+void strip_end(char* s, char c) {
+    if (s[strlen(s) - 1] == c) {
+        s[strlen(s) - 1] = '\0';
+    }
+}
+

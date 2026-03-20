@@ -1,4 +1,6 @@
 
+#include "./html_parser.h"
+
 struct UrlPtrs {
     const char* protocol_start;
     const char* protocol_end;
@@ -14,14 +16,10 @@ struct UrlParts {
     char path[1024];
 };
 
-struct UrlPaths {
-    char dir_path[256];
-    char file_path[256];
-};
-
 bool is_url_relative(const char* url);
 bool is_url_http(const char* url);
 
 struct UrlPtrs get_url_pointers(const char* url);
 void parse_url_parts(const char* url, struct UrlParts* parts);
-void parse_url_paths(const char* url, struct UrlPaths* out);
+bool detect_is_file(const char* url, HrefType type_hint);
+void url_to_filepath(const char* url, bool is_file, char* out_path, int* out_dir_len);

@@ -16,12 +16,13 @@
         ASSERT_EQUAL_STR(parts.path, path_expected); \
     } \
 
-#define TEST_PARSE_PATHS(name, url, dir_expected, path_expected) \
+#define TEST_PARSE_PATHS(name, is_file, url, path_expected, dir_len_expected) \
     TEST(url_parser_##name) { \
-        struct UrlPaths paths; \
-        parse_url_paths(url, &paths); \
-        ASSERT_EQUAL_STR(paths.dir_path, dir_expected); \
-        ASSERT_EQUAL_STR(paths.file_path, path_expected); \
+        char file_path[MAX_URL_LENGTH]; \
+        int dir_len; \
+        url_to_filepath(url, is_file, file_path, &dir_len); \
+        ASSERT_EQUAL_STR(file_path, path_expected); \
+        ASSERT_EQUAL_INT(dir_len, dir_len_expected); \
     } \
 
 TEST(url_parser_1) {
@@ -115,13 +116,22 @@ TEST_PARSE_PARTS(14, "archlinux.org?SDF", "", "archlinux.org", "");
 TEST_PARSE_PARTS(16, "http://archlinux.org/\n", "http://", "archlinux.org", "/");
 TEST_PARSE_PARTS(17, "http://archlinux.org/\r", "http://", "archlinux.org", "/");
 
-TEST_PARSE_PATHS(18, "https://archlinux.org/releases/downloads",    "archlinux.org/releases/downloads", "archlinux.org/releases/downloads/index.html");
-TEST_PARSE_PATHS(19, "https://archlinux.org/releases/downloads/",   "archlinux.org/releases/downloads", "archlinux.org/releases/downloads/index.html");
-TEST_PARSE_PATHS(20, "https://archlinux.org/releases/page.html",    "archlinux.org/releases",           "archlinux.org/releases/page.html");
-TEST_PARSE_PATHS(21, "https://archlinux.org/",                      "archlinux.org",                    "archlinux.org/index.html");
-TEST_PARSE_PATHS(22, "https://archlinux.org",                       "archlinux.org",                    "archlinux.org/index.html");
-TEST_PARSE_PATHS(23, "https://archlinux.org/packages/webkitgtk-6.0",      "archlinux.org/packages/webkitgtk-6.0",        "archlinux.org/packages/webkitgtk-6.0/index.html");
-TEST_PARSE_PATHS(24, "archlinux.org/static/archweb.css",      "archlinux.org/static",        "archlinux.org/static/archweb.css");
+TEST_PARSE_PATHS(18, false, "https://archlinux.org/releases/downloads",     "archlinux.org/releases/downloads/index.html", 33);
+TEST_PARSE_PATHS(19, false, "https://archlinux.org/releases/downloads/",    "archlinux.org/releases/downloads/index.html", 33);
+// Yes, we want to trfalses as a directories. This is because TODO
+TEST_PARSE_PATHS(20, false, "https://archlinux.org/releases/page.html",     "archlinux.org/releases/page.html/index.html", 33);
+TEST_PARSE_PATHS(21, false, "https://archlinux.org/",                       "archlinux.org/index.html", 14);
+TEST_PARSE_PATHS(22, true,  "https://archlinux.org",                        "archlinux.org", 0);
+TEST_PARSE_PATHS(23, false, "archlinux.org",                                "archlinux.org/index.html", 14);
+TEST_PARSE_PATHS(24, false, "archlinux.org",                                "archlinux.org/index.html", 14);
+TEST_PARSE_PATHS(25, false, "https://archlinux.org/packages/webkitgtk-6.0", "archlinux.org/packages/webkitgtk-6.0/index.html", 37);
+TEST_PARSE_PATHS(26, false, "archlinux.org/link.net",                       "archlinux.org/link.net/index.html", 23);
+TEST_PARSE_PATHS(27, false, "archlinux.org/link.net/",                      "archlinux.org/link.net/index.html", 23);
+// Contradictive, is_file=true but ends with slash. Second should take priority.
+TEST_PARSE_PATHS(28, true, "archlinux.org/link.net/",                       "archlinux.org/link.net/index.html", 23);
+TEST_PARSE_PATHS(29, true, "archlinux.org/static/archweb.css",              "archlinux.org/static/archweb.css", 21);
+TEST_PARSE_PATHS(30, true, "archlinux.org/static/script.js",                "archlinux.org/static/script.js", 21);
+TEST_PARSE_PATHS(31, true, "archlinux.org/static/archlinux_common_style/apple-touch-icon-144x144.png",                "archlinux.org/static/archlinux_common_style/apple-touch-icon-144x144.png", 44);
 
 
 int main() {
@@ -150,4 +160,11 @@ int main() {
     RUN_TEST(url_parser_22);
     RUN_TEST(url_parser_23);
     RUN_TEST(url_parser_24);
+    RUN_TEST(url_parser_25);
+    RUN_TEST(url_parser_26);
+    RUN_TEST(url_parser_27);
+    RUN_TEST(url_parser_28);
+    RUN_TEST(url_parser_29);
+    RUN_TEST(url_parser_30);
+    RUN_TEST(url_parser_31);
 }

@@ -86,49 +86,65 @@ void parse_url_parts(const char* url, struct UrlParts* parts) {
     }
 }
 
-
-void parse_url_paths(const char* url, struct UrlPaths* out) {
-    struct UrlParts url_p;
-    parse_url_parts(url, &url_p);
-
-    // Strip '/' at end
-    char* url_path = url_p.path;
-    if (url_path[strlen(url_path) - 1] == '/') {
-        url_path[strlen(url_path) - 1] = '\0';
+bool detect_is_file(const char* url, HrefType type_hint) {
+    bool is_file = false;
+    switch (type_hint) {
+        case HREF_TYPE_HTML:
+        case HREF_TYPE_UNKNOWN: 
+            is_file = false;
+            break;
+        case HREF_TYPE_IMG:
+        case HREF_TYPE_STYLE:
+        case HREF_TYPE_SCRIPT:
+            is_file = true;
+            break;
     }
 
-    const int url_len = strlen(url);
-    const int url_path_len = strlen(url_path);
-
-    char stripped_url[MAX_URL_LENGTH];
-    sprintf(stripped_url, "%s%s", url_p.host, url_path);
-
-    bool is_file = false;
     // Find last '/' occurence
-    int i = url_path_len;
+    int i = strlen(url);
     while (i > 0) {
-        if (url_path[i] == '.' && is_alphabet(url_path[i + 1])) {
+        if (type_hint == HREF_TYPE_UNKNOWN && url[i] == '.' && is_alphabet(url[i + 1])) {
             is_file = true;
         }
-        else if (url_path[i] == '/') {
+        else if (url[i] == '/') {
             break;
         }
         i--;
     }
 
-    if (is_file) {
-        int filename_len = url_path_len - i;
-        int dir_len = strlen(stripped_url) - filename_len;
+    return is_file;
+}
 
-        // Fill dir_path
-        memcpy(out->dir_path, stripped_url, dir_len);
-        out->dir_path[dir_len] = '\0';
-        // Fill file_path
-        strcpy(out->file_path, stripped_url);
+void url_to_filepath(const char* url, bool is_file, char* out_path, int* out_dir_len) {
+    struct UrlPtrs ptrs = get_url_pointers(url);
+    const char* from = ptrs.host_start ? ptrs.host_start : url;
+    const char* to = ptrs.path_end ? ptrs.path_end : (url + strlen(url));
+
+    char url2[MAX_URL_LENGTH];
+    int len = to - from;
+    memcpy(url2, from, len);
+    url2[len] = '\0';
+
+    if (ends_with(url2, "/")) {
+        is_file = false;
+    }
+
+    if (is_file) {
+        // Find last '/' occurence
+        int i = strlen(url2);
+        while (i > 0) {
+            if (url2[i] == '/') {
+                i++;
+                break;
+            }
+            i--;
+        }
+
+        strcpy(out_path, url2);
+        *out_dir_len = i;
     } else {
-        // Fill dir_path
-        strcpy(out->dir_path, stripped_url);
-        // Fill file_path
-        sprintf(out->file_path, "%s/index.html", stripped_url);
+        strip_end(url2, '/');
+        *out_dir_len = strlen(url2) + 1;
+        sprintf(out_path, "%s/index.html", url2);
     }
 }

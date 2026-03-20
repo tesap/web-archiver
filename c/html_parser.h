@@ -1,4 +1,7 @@
 
+#ifndef HTML_PARSER_H
+#define HTML_PARSER_H
+
 typedef enum {
     HREF_TYPE_UNKNOWN,
     HREF_TYPE_HTML,
@@ -20,3 +23,5 @@ void search_resource_urls(
     void(*callback)(const char* href, HrefType ht, void* ctx),
     void* ctx
 );
+
+#endif
