@@ -51,41 +51,35 @@ struct cmd_args cmd_args = {
 
 void crawl_urls(const char* url, int depth_level);
 
-void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
-    /*
-     * The function takes ownership of @found_url, i.e. it frees it at the end.
-     */
-
-    struct FoundUrlCallbackCtx* capture_ctx = (struct FoundUrlCallbackCtx*)ctx;
-    const char* page_url = capture_ctx->page_url;
-    int depth_level = capture_ctx->depth_level;
-    char* result_url = NULL;
+void on_found_url_callback(const char* found_url_start, int found_url_size, HrefType ht, void* ctx) {
+    struct FoundUrlCallbackCtx* ctx_struct = (struct FoundUrlCallbackCtx*)ctx;
+    const char* page_url = ctx_struct->page_url;
+    int depth_level = ctx_struct->depth_level;
 
     assert(page_url != NULL);
-    assert(found_url != NULL);
+    assert(found_url_start != NULL);
+    assert(found_url_size > 0);
     assert(strlen(page_url) != 0);
-    assert(strlen(found_url) != 0);
 
-    bool free_result_url = false;
-    if (is_url_http(found_url)) {
-        // Conversion: result_url is not changed further, needed for else branch
-        result_url = (char*)found_url;
-    } else if (is_url_relative(found_url)) {
+    char result_url[MAX_URL_LENGTH] = "";
+
+    if (is_url_http(found_url_start)) {
+        memcpy(result_url, found_url_start, found_url_size);
+        result_url[found_url_size] = '\0';
+    } else if (is_url_relative(found_url_start)) {
         struct UrlParts p_page;
         parse_url_parts(page_url, &p_page);
         char* protocol = p_page.protocol;
         char* host = p_page.host;
         
-        int full_url_len = strlen(protocol) + strlen(host) + strlen(found_url) + 1;
-        char* full_url = (char *)malloc(full_url_len * sizeof(char));
+        int full_url_len = strlen(protocol) + strlen(host) + found_url_size + 1;
+        char full_url[full_url_len];
 
-        sprintf(full_url, "%s%s%s", protocol, host, found_url);
-        result_url = full_url;
-        free_result_url = true;
-    } else {
-        // URL does not match needed criterias
-        goto cleanup;
+        sprintf(full_url, "%s%s%.*s", protocol, host, found_url_size, found_url_start);
+        memcpy(result_url, full_url, full_url_len);
     }
+
+    if (strlen(result_url) == 0) return;
 
     if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
         struct UrlParts p_result, p_page;
@@ -93,7 +87,7 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
         parse_url_parts(page_url, &p_page);
         if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
             if (strcmp(p_result.host, p_page.host) != 0) {
-                goto cleanup;
+                return;
             }
         }
         if (cmd_args.filter_type == DOMAIN_FILTER_SUBDOMAIN) {
@@ -102,7 +96,7 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
             // p_page.host   =        archlinux.org
             // Then first is a subdomain of the second
             if (!ends_with(p_result.host, p_page.host)) {
-                goto cleanup;
+                return;
             }
         }
     }
@@ -115,16 +109,11 @@ void on_found_url_callback(const char* found_url, HrefType ht, void* ctx) {
         case HREF_TYPE_SCRIPT: printf("SCRIPT"); break;
         case HREF_TYPE_HTML: printf("HTML"); break;
     }
-    printf("\t%s\n", result_url);
+    fprintf(stdout, "\t%s\n", result_url);
 
     if (ht == HREF_TYPE_HTML) {
         // Crawl URLs recursively
         crawl_urls(result_url, depth_level - 1);
-    }
-
-cleanup:
-    if (free_result_url) {
-        free(result_url);
     }
 }
 

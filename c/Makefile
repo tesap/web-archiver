@@ -25,7 +25,7 @@ ${OUT}/tests-url_parser: tests/tests-url_parser.c url_parser.c util.c | out
 ${OUT}/tests-http_parser: tests/tests-http_parser.c util.c http_parser.c url_parser.c | out
 	${GCC} ${FLAGS} $^ -o $@
 
-${OUT}/tests-html_parser: tests/tests-html_parser.c html_parser.c util.c | out
+${OUT}/tests-html_parser: tests/tests-html_parser.c url_parser.c html_parser.c util.c | out
 	${GCC} ${FLAGS} $^ -o $@
 
 ${OUT}/tests-util: tests/tests-util.c util.c | ${OUT} ${OUT}/files

@@ -200,7 +200,7 @@ int download_http(const char* url, int timeout_sec, struct HttpPage* out) {
 
         return 0;
     } else {
-        fprintf(stderr, "RESPONSE: %.*s\n", headers_vec->size, headers_vec->ptr);
+        fprintf(stderr, "> %.*s\n", headers_vec->size, headers_vec->ptr);
         fprintf(stderr, "=== Bad status_code: %d\n", status_code);
         write_file("err.http", headers_vec->ptr, headers_vec->size);
         return -1;

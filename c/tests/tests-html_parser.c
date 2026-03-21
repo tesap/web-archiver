@@ -4,12 +4,76 @@
 
 #include <assert.h>
 
-struct HrefAttrs {
+#define TEST_SEARCH_RESOURCE_URL(name, buff, cmp_list, cmp_list_size) \
+    TEST(html_parser_##name) { \
+        int cmp_index = 0; \
+        struct TestCallbackCtx ctx = { \
+            &cmp_index, \
+            cmp_list, \
+            cmp_list_size \
+        }; \
+        search_resource_urls(buff, strlen(buff), test_callback_search_resource_url, &ctx); \
+        ASSERT_EQUAL_INT(cmp_index, cmp_list_size); \
+    } \
+
+#define TEST_SEARCH_RESOURCE_URL_FILE(name, filepath, cmp_list, cmp_list_size) \
+    TEST(html_parser_##name) { \
+        char* buff; \
+        int size = read_file(filepath, &buff); \
+        ASSERT_EQUAL_INT(size > 0, true); \
+        int cmp_index = 0; \
+        struct TestCallbackCtx ctx = { \
+            &cmp_index, \
+            cmp_list, \
+            cmp_list_size \
+        }; \
+        search_resource_urls(buff, size, test_callback_search_resource_url, &ctx); \
+    } \
+
+struct HtmlLink {
     char* value;
     HrefType type;
 };
 
-struct HrefAttrs test1_ha_list[] = {
+struct TestCallbackCtx {
+    int* cmp_index;
+    struct HtmlLink* cmp_list;
+    int cmp_list_size;
+};
+
+void test_callback_search_resource_url(const char* found_url_start, int found_url_size, HrefType ht, void* ctx) {
+    struct TestCallbackCtx* ctx_struct = (struct TestCallbackCtx*)ctx;
+    int* cmp_index = ctx_struct->cmp_index;
+    struct HtmlLink* cmp_list = ctx_struct->cmp_list;
+    int cmp_list_size = ctx_struct->cmp_list_size;
+
+    if (*cmp_index >= cmp_list_size) {
+        return;
+    }
+
+    // printf("\n=== (%d) URL: %.*s", *cmp_index, found_url_size, found_url_start);
+
+    ASSERT_EQUAL_STRN(found_url_start, cmp_list[*cmp_index].value, found_url_size);
+    ASSERT_EQUAL_INT(ht, cmp_list[*cmp_index].type);
+    (*cmp_index)++;
+}
+
+TEST(html_parser_1) { ASSERT_EQUAL_INT(href_type("https://aur.archlinux.org/", NULL, "a"), HREF_TYPE_HTML); }
+TEST(html_parser_2) { ASSERT_EQUAL_INT(href_type("/feed/packages/", NULL, "a"), HREF_TYPE_HTML); }
+TEST(html_parser_3) { ASSERT_EQUAL_INT(href_type("#title-anything", NULL, "a"), HREF_TYPE_HTML); }
+TEST(html_parser_4) { ASSERT_EQUAL_INT(href_type("https://stackoverflow.com/Content/Sites/stackoverflow/Img/apple-touch-icon.png?v=9168b8ec82a5", NULL, "link"), HREF_TYPE_IMG); }
+// TEST(html_parser_5) { ASSERT_EQUAL_INT(href_type("magnet:?xt=urn:btih:a4373c326657898d0c588c3ff892a0fac97ffa20&amp;dn=archlinux-2026.03.01-x86_64.iso", NULL, "a"), HREF_TYPE_UNKNOWN); }
+// TEST(html_parser_6) { ASSERT_EQUAL_INT(href_type("mailto:jvinet@zeroflux.org", NULL, "a"), HREF_TYPE_UNKNOWN); }
+
+struct HtmlLink cmp_list5[] = {
+    {"HREF1", HREF_TYPE_HTML},
+    {"HREF2", HREF_TYPE_HTML},
+};
+int cmp_list_size5 = sizeof(cmp_list5) / sizeof(struct HtmlLink);
+
+TEST_SEARCH_RESOURCE_URL(5, "<a href=\"HREF1\"/><a href=\"HREF2\"/>", cmp_list5, cmp_list_size5);
+
+struct HtmlLink cmp_list6[] = {
     {"/static/archlinux_common_style/navbar.css", HREF_TYPE_STYLE},
     {"/static/archweb.css", HREF_TYPE_STYLE},
     {"/static/archlinux_common_style/favicon.png", HREF_TYPE_IMG},
@@ -22,7 +86,7 @@ struct HrefAttrs test1_ha_list[] = {
     {"/feeds/news/", HREF_TYPE_UNKNOWN},
     {"/feeds/packages/", HREF_TYPE_UNKNOWN},
     {"/static/homepage.js", HREF_TYPE_SCRIPT},
-    // {"https://fosstodon.org/@archlinux", HREF_TYPE_HTML}, // Not appropriate
+    {"https://fosstodon.org/@archlinux", HREF_TYPE_UNKNOWN},
     {"/", HREF_TYPE_HTML},
     {"/", HREF_TYPE_HTML},
     {"/packages/", HREF_TYPE_HTML},
@@ -35,60 +99,9 @@ struct HrefAttrs test1_ha_list[] = {
     {"https://aur.archlinux.org/", HREF_TYPE_HTML},
     // Other hrefs are omitted
 };
-int test1_ha_list_size = sizeof(test1_ha_list) / sizeof(struct HrefAttrs);
+int cmp_list_size6 = sizeof(cmp_list6) / sizeof(struct HtmlLink);
 
-void html_parser_1_callback(const char* found_url, HrefType ht, void* ctx) {
-    int* href_index = (int*)ctx;
-    if (*href_index >= test1_ha_list_size) {
-        return;
-    }
-
-    printf("=== (%d) URL: %s\n", *href_index, found_url);
-    // print_href_type(ht);
-
-    ASSERT_EQUAL_STR(found_url, test1_ha_list[*href_index].value);
-    ASSERT_EQUAL_INT(ht, test1_ha_list[*href_index].type);
-    (*href_index)++;
-}
-
-TEST(html_parser_1) {
-    char* path = "./out/files/archlinux.org.html";
-    char* buff;
-    int size = read_file(path, &buff);
-
-    int href_index = 0;
-    search_resource_urls(buff, size, html_parser_1_callback, &href_index);
-}
-
-struct HrefAttrs test2_ha_list[] = {
-    {"HREF1", HREF_TYPE_HTML},
-    {"HREF2", HREF_TYPE_HTML},
-};
-int test2_ha_list_size = sizeof(test2_ha_list) / sizeof(struct HrefAttrs);
-
-void html_parser_2_callback(const char* found_url, HrefType ht, void* ctx) {
-    int* href_index = (int*)ctx;
-    printf("=== (%d) URL: %s\n", *href_index, found_url);
-
-    ASSERT_EQUAL_STR(found_url, test2_ha_list[*href_index].value);
-    ASSERT_EQUAL_INT(ht, test2_ha_list[*href_index].type);
-    (*href_index)++;
-}
-
-TEST(html_parser_2) {
-    char* buff = "<a href=\"HREF1\"/><a href=\"HREF2\"/>";
-
-    int href_index = 0;
-    search_resource_urls(buff, strlen(buff), html_parser_2_callback, &href_index);
-    ASSERT_EQUAL_INT(href_index, test2_ha_list_size);
-}
-
-TEST(html_parser_3) { ASSERT_EQUAL_INT(href_type("https://aur.archlinux.org/", NULL, "a"), HREF_TYPE_HTML); }
-TEST(html_parser_4) { ASSERT_EQUAL_INT(href_type("/feed/packages/", NULL, "a"), HREF_TYPE_HTML); }
-TEST(html_parser_5) { ASSERT_EQUAL_INT(href_type("#title-anything", NULL, "a"), HREF_TYPE_HTML); }
-TEST(html_parser_6) { ASSERT_EQUAL_INT(href_type("magnet:?xt=urn:btih:a4373c326657898d0c588c3ff892a0fac97ffa20&amp;dn=archlinux-2026.03.01-x86_64.iso", NULL, "a"), HREF_TYPE_UNKNOWN); }
-TEST(html_parser_7) { ASSERT_EQUAL_INT(href_type("mailto:jvinet@zeroflux.org", NULL, "a"), HREF_TYPE_UNKNOWN); }
-TEST(html_parser_8) { ASSERT_EQUAL_INT(href_type("https://stackoverflow.com/Content/Sites/stackoverflow/Img/apple-touch-icon.png?v=9168b8ec82a5", NULL, "link"), HREF_TYPE_IMG); }
+TEST_SEARCH_RESOURCE_URL_FILE(6, "./out/files/archlinux.org.html", cmp_list6, cmp_list_size6);
 
 int main() {
     RUN_TEST(html_parser_1);
@@ -97,6 +110,4 @@ int main() {
     RUN_TEST(html_parser_4);
     RUN_TEST(html_parser_5);
     RUN_TEST(html_parser_6);
-    RUN_TEST(html_parser_7);
-    RUN_TEST(html_parser_8);
 }

@@ -20,7 +20,7 @@ void print_href_type(HrefType ht);
 void search_resource_urls(
     const char* data,
     int size,
-    void(*callback)(const char* href, HrefType ht, void* ctx),
+    void(*callback)(const char* link_start, int link_size, HrefType ht, void* ctx),
     void* ctx
 );
 

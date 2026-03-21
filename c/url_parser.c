@@ -6,23 +6,26 @@
 #include "./url_parser.h"
 #include "./util.h"
 
-bool is_url_relative(const char* url) {
+bool is_url_relative(const char* url_start) {
     /*
      * Tells whether a URL refers relative path.
      * which means it is either refers relative path or an http/https URL.
      */
-    return strncmp(url, "/", 1) == 0;
+    return url_start[0] == '/';
 }
 
-bool is_url_http(const char* url) {
+bool is_url_http(const char* url_start) {
     /*
      * Tells whether a URL is http/https.
      */
-    return strncmp(url, "http", 4) == 0;
+    return strncmp(url_start, "http", 4) == 0;
 }
 
 struct UrlPtrs get_url_pointers(const char* url) {
     struct UrlPtrs res = { NULL, NULL, NULL, NULL, NULL, NULL };
+
+    assert(url != NULL);
+    assert(strlen(url) > 0);
 
     // TODO Better parsing and handling of corner cases
     const char* i = url;
