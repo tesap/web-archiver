@@ -6,7 +6,7 @@
 #include "./url_parser.h"
 #include "./html_parser.h"
 
-int cached_download_http(const char* url, int request_timeout, int is_save, int cache_ttl, HrefType type_hint, struct HttpPage* out) {
+int cached_download_http(const char* url, int request_timeout, int is_save, int cache_ttl, LinkType type_hint, struct HttpPage* out) {
     bool is_file = detect_is_file(url, type_hint);
 
     char file_path[MAX_URL_LENGTH];

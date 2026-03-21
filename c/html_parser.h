@@ -3,24 +3,30 @@
 #define HTML_PARSER_H
 
 typedef enum {
-    HREF_TYPE_UNKNOWN,
-    HREF_TYPE_HTML,
-    HREF_TYPE_IMG,
-    HREF_TYPE_STYLE,
-    HREF_TYPE_SCRIPT,
-} HrefType;
+    LINK_TYPE_UNKNOWN,
+    LINK_TYPE_HTML,
+    LINK_TYPE_IMG,
+    LINK_TYPE_STYLE,
+    LINK_TYPE_SCRIPT,
+} LinkType;
 
-HrefType href_type(
-    const char* href_attr,
-    const char* type_attr,
-    const char* elem_name
-);
-void print_href_type(HrefType ht);
+LinkType tag_link_type(struct HtmlTag* t);
+void print_link_type(LinkType lt);
 
-void search_resource_urls(
-    const char* data,
+struct HtmlTag {
+    char tag_name[16];
+    const char* tag_end;
+    const char* link_start;
+    int link_size;
+    const char* type_start;
+    int type_size;
+};
+
+struct HtmlTag parse_html_tag(const char* buff);
+void iter_html_tags(
+    const char* buff,
     int size,
-    void(*callback)(const char* link_start, int link_size, HrefType ht, void* ctx),
+    void(*callback)(struct HtmlTag* t, void* ctx),
     void* ctx
 );
 

@@ -51,31 +51,31 @@ struct cmd_args cmd_args = {
 
 void crawl_urls(const char* url, int depth_level);
 
-void on_found_url_callback(const char* found_url_start, int found_url_size, HrefType ht, void* ctx) {
+void on_found_url_callback(struct HtmlTag* t, void* ctx) {
     struct FoundUrlCallbackCtx* ctx_struct = (struct FoundUrlCallbackCtx*)ctx;
     const char* page_url = ctx_struct->page_url;
     int depth_level = ctx_struct->depth_level;
 
     assert(page_url != NULL);
-    assert(found_url_start != NULL);
-    assert(found_url_size > 0);
+    assert(t->link_start != NULL);
+    assert(t->link_size > 0);
     assert(strlen(page_url) != 0);
 
     char result_url[MAX_URL_LENGTH] = "";
 
-    if (is_url_http(found_url_start)) {
-        memcpy(result_url, found_url_start, found_url_size);
-        result_url[found_url_size] = '\0';
-    } else if (is_url_relative(found_url_start)) {
+    if (is_url_http(t->link_start)) {
+        memcpy(result_url, t->link_start, t->link_size);
+        result_url[t->link_size] = '\0';
+    } else if (is_url_relative(t->link_start)) {
         struct UrlParts p_page;
         parse_url_parts(page_url, &p_page);
         char* protocol = p_page.protocol;
         char* host = p_page.host;
         
-        int full_url_len = strlen(protocol) + strlen(host) + found_url_size + 1;
+        int full_url_len = strlen(protocol) + strlen(host) + t->link_size + 1;
         char full_url[full_url_len];
 
-        sprintf(full_url, "%s%s%.*s", protocol, host, found_url_size, found_url_start);
+        sprintf(full_url, "%s%s%.*s", protocol, host, t->link_size, t->link_start);
         memcpy(result_url, full_url, full_url_len);
     }
 
@@ -102,16 +102,17 @@ void on_found_url_callback(const char* found_url_start, int found_url_size, Href
     }
 
     // Finally print URL to stdout
-    switch (ht) {
-        case HREF_TYPE_UNKNOWN: printf("NO"); break;
-        case HREF_TYPE_IMG: printf("IMAGE"); break;
-        case HREF_TYPE_STYLE: printf("STYLE"); break;
-        case HREF_TYPE_SCRIPT: printf("SCRIPT"); break;
-        case HREF_TYPE_HTML: printf("HTML"); break;
+    LinkType lt = tag_link_type(t);
+    switch (lt) {
+        case LINK_TYPE_UNKNOWN: printf("NO"); break;
+        case LINK_TYPE_IMG: printf("IMAGE"); break;
+        case LINK_TYPE_STYLE: printf("STYLE"); break;
+        case LINK_TYPE_SCRIPT: printf("SCRIPT"); break;
+        case LINK_TYPE_HTML: printf("HTML"); break;
     }
     fprintf(stdout, "\t%s\n", result_url);
 
-    if (ht == HREF_TYPE_HTML) {
+    if (lt == LINK_TYPE_HTML) {
         // Crawl URLs recursively
         crawl_urls(result_url, depth_level - 1);
     }
@@ -135,7 +136,7 @@ void crawl_urls(const char* url, int depth_level) {
         cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
-        HREF_TYPE_HTML,
+        LINK_TYPE_HTML,
         &downloaded_page
     );
 
@@ -144,7 +145,7 @@ void crawl_urls(const char* url, int depth_level) {
             downloaded_page.effective_url,
             depth_level,
         };
-        search_resource_urls(
+        iter_html_tags(
             downloaded_page.content_vec->ptr,
             downloaded_page.content_vec->size,
             on_found_url_callback,

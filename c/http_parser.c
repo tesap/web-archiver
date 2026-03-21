@@ -75,7 +75,7 @@ int get_location_header(const char* headers_buff, const char* request_url, char*
     size_t value_len = strlen_with_delims(value_start);
 
     if (is_url_relative(value_start)) {
-        struct UrlPtrs ptrs = get_url_pointers(request_url);
+        struct UrlPtrs ptrs = get_url_pointers(request_url, strlen(request_url));
         // Copy part of URL without path
         int len = ptrs.host_end - request_url;
         memcpy(result, request_url, len);

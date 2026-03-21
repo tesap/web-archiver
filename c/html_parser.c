@@ -7,70 +7,57 @@
 #include "./html_parser.h"
 #include "./url_parser.h"
 
-void print_href_type(HrefType ht) {
+void print_link_type(LinkType ht) {
     switch (ht) {
-        case HREF_TYPE_UNKNOWN: printf("HREF_TYPE_UNKNOWN"); break;
-        case HREF_TYPE_IMG: printf("HREF_TYPE_IMG"); break;
-        case HREF_TYPE_STYLE: printf("HREF_TYPE_STYLE"); break;
-        case HREF_TYPE_SCRIPT: printf("HREF_TYPE_SCRIPT"); break;
-        case HREF_TYPE_HTML: printf("HREF_TYPE_HTML"); break;
+        case LINK_TYPE_UNKNOWN: printf("LINK_TYPE_UNKNOWN"); break;
+        case LINK_TYPE_IMG: printf("LINK_TYPE_IMG"); break;
+        case LINK_TYPE_STYLE: printf("LINK_TYPE_STYLE"); break;
+        case LINK_TYPE_SCRIPT: printf("LINK_TYPE_SCRIPT"); break;
+        case LINK_TYPE_HTML: printf("LINK_TYPE_HTML"); break;
     }
 }
 
-HrefType href_type(
-    const char* link_attr,
-    const char* type_attr,
-    const char* elem_name
-) {
-    if (strncmp(elem_name, "a", 1) == 0) {
-        return HREF_TYPE_HTML;
+LinkType tag_link_type(struct HtmlTag* t) {
+    if (strncmp(t->tag_name, "a", 1) == 0) {
+        return LINK_TYPE_HTML;
     }
-    if (strncmp(elem_name, "img", 3) == 0) {
-        return HREF_TYPE_IMG;
+    if (strncmp(t->tag_name, "img", 3) == 0) {
+        return LINK_TYPE_IMG;
     }
-    if (strncmp(elem_name, "script", 6) == 0) {
-        return HREF_TYPE_SCRIPT;
+    if (strncmp(t->tag_name, "script", 6) == 0) {
+        return LINK_TYPE_SCRIPT;
     }
 
-    if (type_attr && strlen(type_attr) > 0) {
-        if (strncmp(type_attr, "text/css", 8) == 0) {
-            return HREF_TYPE_STYLE;
+    if (t->type_start) {
+        if (strncmp(t->type_start, "text/css", 8) == 0) {
+            return LINK_TYPE_STYLE;
         }
-        if (strncmp(type_attr, "image/", 6) == 0) {
-            return HREF_TYPE_IMG;
+        if (strncmp(t->type_start, "image/", 6) == 0) {
+            return LINK_TYPE_IMG;
         }
-        if (strncmp(type_attr, "text/javascript", 15) == 0) {
-            return HREF_TYPE_SCRIPT;
+        if (strncmp(t->type_start, "text/javascript", 15) == 0) {
+            return LINK_TYPE_SCRIPT;
         }
     } else {
-        assert(link_attr != NULL);
-        int len = strlen(link_attr);
-        assert(len > 0);
+        assert(t->link_start != NULL);
 
-        struct UrlPtrs ptrs = get_url_pointers(link_attr);
+        struct UrlPtrs ptrs = get_url_pointers(t->link_start, t->link_size);
         if (strncmp(ptrs.path_end - 4, ".png", 4) == 0) {
-            return HREF_TYPE_IMG;
+            return LINK_TYPE_IMG;
         }
         if (strncmp(ptrs.path_end - 4, ".jpg", 4) == 0) {
-            return HREF_TYPE_IMG;
+            return LINK_TYPE_IMG;
         }
         if (strncmp(ptrs.path_end - 4, ".css", 4) == 0) {
-            return HREF_TYPE_STYLE;
+            return LINK_TYPE_STYLE;
         }
         if (strncmp(ptrs.path_end - 3, ".js", 3) == 0) {
-            return HREF_TYPE_SCRIPT;
+            return LINK_TYPE_SCRIPT;
         }
     }
 
-    return HREF_TYPE_UNKNOWN;
+    return LINK_TYPE_UNKNOWN;
 }
-
-struct CapturedLink {
-    char* link_start;
-    int link_size;
-    char* type_start;
-    int type_size;
-};
 
 enum CaptureAttr {
     CAPTURE_LINK,
@@ -78,64 +65,82 @@ enum CaptureAttr {
     CAPTURE_NO,
 };
 
-struct CapturedLink parse_html_tag(
-    char** ptr_start,
-    const char* elem_name, // f.e. "a" or "script" or "link"
-    const char* link_attr_name // f.e. "href" or "src"
-) {
+struct HtmlTag parse_html_tag(const char* buff) {
     /*
-     * The function effectively searches for <a> elements in HTML document.
+     * The function effectively searches for a,link,img,script tags in @buff.
      * It uses simple per-byte parser which searches for the following match
      * and captures content inside quotes:
      *      '<a .* type="<CAPTURE_1>" .* href="<CAPTURE_2>">.*</a>"'
-     *      '<img  .* src="<CAPTURE>"'
-     *      '<link .* href="<CAPTURE>"'
      * 
      * A caller does not pass ownership of @page_url, he should handle it on its own.
+     *
+     * @buff is not expected to have '>' occurence
      */
+
+    struct HtmlTag out = {
+        { NULL },
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    };
+
+    const char* ptr = buff;
+    ptr++; // Skip '<'
+
+    char* link_attr_prefix;
+    if (strncmp(ptr, "a", 1) == 0) {
+        strcpy(out.tag_name, "a");
+        link_attr_prefix = "href=\"";
+    }
+    else if (strncmp(ptr, "link", 4) == 0) {
+        strcpy(out.tag_name, "link");
+        link_attr_prefix = "href=\"";
+    }
+    else if (strncmp(ptr, "img", 3) == 0) {
+        strcpy(out.tag_name, "img");
+        link_attr_prefix = "src=\"";
+    }
+    else if (strncmp(ptr, "script", 6) == 0) {
+        strcpy(out.tag_name, "script");
+        link_attr_prefix = "src=\"";
+    } else {
+        return out;
+    }
 
     int progress_step = 0;
     CaptureAttr capture_attr = CAPTURE_NO;
-    char* capture_start = NULL;
+    const char* capture_start = NULL;
 
-    char* link_start = NULL;
-    char* type_start = NULL;
-    int link_size = 0;
-    int type_size = 0;
-
-    char link_attr_prefix[strlen(link_attr_name) + 3];
-    sprintf(link_attr_prefix, "%s=\"", link_attr_name);
-
-    char* el_ptr = *ptr_start;
-    while ((el_ptr - *ptr_start) < MAX_HTML_TAG_LENGTH) {
+    while ((ptr - buff) < MAX_HTML_TAG_LENGTH) {
         switch (progress_step) {
             case 0:
-                // printf("---> \t2: (%.*s)\n", 10, el_ptr);
-                if (*el_ptr == '>') {
-                    *ptr_start = el_ptr;
+                // printf("---> \t2: (%.*s)\n", 10, ptr);
+                if (*ptr == '>') {
                     goto end;
-                } else if (strncmp(el_ptr, link_attr_prefix, strlen(link_attr_prefix)) == 0) {
+                } else if (strncmp(ptr, link_attr_prefix, strlen(link_attr_prefix)) == 0) {
                     progress_step++;
-                    el_ptr += strlen(link_attr_prefix) - 1;
-                    capture_start = el_ptr + 1;
+                    ptr += strlen(link_attr_prefix) - 1;
+                    capture_start = ptr + 1;
                     capture_attr = CAPTURE_LINK;
-                } else if (strncmp(el_ptr, "type=\"", 6) == 0) {
+                } else if (strncmp(ptr, "type=\"", 6) == 0) {
                     progress_step++;
-                    el_ptr += 5;
-                    capture_start = el_ptr + 1;
+                    ptr += 5;
+                    capture_start = ptr + 1;
                     capture_attr = CAPTURE_TYPE;
                 }
                 break;
             case 1: // STATE_CAPTURE
-                if (*el_ptr == '\"') { // End of arg capture
-                    int captured_size = el_ptr - capture_start;
+                if (*ptr == '\"') { // End of arg capture
+                    int captured_size = ptr - capture_start;
                     if (captured_size > 0) {
                         if (capture_attr == CAPTURE_LINK) {
-                            link_start = capture_start;
-                            link_size = captured_size;
+                            out.link_start = capture_start;
+                            out.link_size = captured_size;
                         } else if (capture_attr == CAPTURE_TYPE) {
-                            type_start = capture_start;
-                            type_size = captured_size;
+                            out.type_start = capture_start;
+                            out.type_size = captured_size;
                         }
                     }
                     progress_step = 0;
@@ -147,64 +152,79 @@ struct CapturedLink parse_html_tag(
                 fprintf(stderr, "=== Unknown progress_step: %d\n", progress_step);
 
         }
-        el_ptr++;
+        ptr++;
     }
 
 end:
-    *ptr_start = el_ptr;
-    return {
-        .link_start = link_start,
-        .link_size = link_size,
-        .type_start = type_start,
-        .type_size = type_size
-    };
+    out.tag_end = ptr;
+    return out;
 }
 
 
-void search_resource_urls(
-    const char* data,
+void iter_html_tags(
+    const char* buff,
     int size,
-    void(*callback)(const char* link_start, int link_size, HrefType ht, void* ctx),
+    void(*callback)(struct HtmlTag* t, void* ctx),
     void* ctx
 ) {
-
-    char* el_ptr = (char*)data;
-    while ((el_ptr - data) < size) {
-        struct CapturedLink l = { NULL, 0, NULL, 0 };
-        char* elem_name;
-        if (strncmp(el_ptr, "<a", 2) == 0) {
-            l = parse_html_tag(&el_ptr, "a", "href");
-            elem_name = "a";
-        }
-        else if (strncmp(el_ptr, "<link", 5) == 0) {
-            l = parse_html_tag(&el_ptr, "link", "href");
-            elem_name = "link";
-        }
-        else if (strncmp(el_ptr, "<img", 4) == 0) {
-            l = parse_html_tag(&el_ptr, "img", "src");
-            elem_name = "img";
-        }
-        else if (strncmp(el_ptr, "<script", 7) == 0) {
-            l = parse_html_tag(&el_ptr, "script", "src");
-            elem_name = "script";
+    /*
+     * Takes: ptr to string
+     * Calls @callback on each occurence of URL
+     */
+    const char* ptr = buff;
+    int left = size;
+    while (left > 0 && (ptr = (const char*)memchr(ptr, '<', left))) {
+        left = size - (ptr - buff);
+        
+        struct HtmlTag t = parse_html_tag(ptr);
+        if (t.link_start == NULL) {
+            ptr++;
+            continue;
         }
 
-        if (l.link_start) {
-            char link_attr[MAX_URL_LENGTH];
-            char type_attr[64] = "";
-
-            memcpy(link_attr, l.link_start, l.link_size);
-            link_attr[l.link_size] = '\0';
-
-            HrefType ht = HREF_TYPE_UNKNOWN;
-            if (l.type_start) {
-                memcpy(type_attr, l.type_start, l.type_size);
-                type_attr[l.type_size] = '\0';
-            }
-
-            ht = href_type(link_attr, type_attr, elem_name);
-            callback(l.link_start, l.link_size, ht, ctx);
-        }
-        el_ptr++;
+        callback(&t, ctx);
+        ptr = t.tag_end + 1;
     }
 }
+//
+//     // TODO can we make it const?
+//     char* el_ptr = (char*)ptr;
+//     while ((el_ptr - ptr) < size) {
+//         struct HtmlTag l = { NULL, 0, NULL, 0 };
+//         char* elem_name;
+//         if (strncmp(el_ptr, "<a", 2) == 0) {
+//             l = parse_html_tag(&el_ptr, "a", "href");
+//             elem_name = "a";
+//         }
+//         else if (strncmp(el_ptr, "<link", 5) == 0) {
+//             l = parse_html_tag(&el_ptr, "link", "href");
+//             elem_name = "link";
+//         }
+//         else if (strncmp(el_ptr, "<img", 4) == 0) {
+//             l = parse_html_tag(&el_ptr, "img", "src");
+//             elem_name = "img";
+//         }
+//         else if (strncmp(el_ptr, "<script", 7) == 0) {
+//             l = parse_html_tag(&el_ptr, "script", "src");
+//             elem_name = "script";
+//         }
+//
+//         if (l.link_start) {
+//             char link_attr[MAX_URL_LENGTH];
+//             char type_attr[64] = "";
+//
+//             memcpy(link_attr, l.link_start, l.link_size);
+//             link_attr[l.link_size] = '\0';
+//
+//             LinkType ht = LINK_TYPE_UNKNOWN;
+//             if (l.type_start) {
+//                 memcpy(type_attr, l.type_start, l.type_size);
+//                 type_attr[l.type_size] = '\0';
+//             }
+//
+//             ht = tag_link_type(link_attr, type_attr, elem_name);
+//             callback(l.link_start, l.link_size, ht, ctx);
+//         }
+//         el_ptr++;
+//     }
+// }

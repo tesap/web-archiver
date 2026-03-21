@@ -21,7 +21,7 @@ bool is_url_http(const char* url_start) {
     return strncmp(url_start, "http", 4) == 0;
 }
 
-struct UrlPtrs get_url_pointers(const char* url) {
+struct UrlPtrs get_url_pointers(const char* url, int size) {
     struct UrlPtrs res = { NULL, NULL, NULL, NULL, NULL, NULL };
 
     assert(url != NULL);
@@ -29,7 +29,7 @@ struct UrlPtrs get_url_pointers(const char* url) {
 
     // TODO Better parsing and handling of corner cases
     const char* i = url;
-    for (i = url; *i != '\0' && (strchr("$?#\n\r ", *i) == 0); i++) {
+    for (i = url; i < url + size && (strchr("$?#\n\r ", *i) == NULL); i++) {
         if (strncmp(i, "://", 3) == 0) {
             res.protocol_start = url;
             i += 3;
@@ -64,7 +64,7 @@ struct UrlPtrs get_url_pointers(const char* url) {
 
 
 void parse_url_parts(const char* url, struct UrlParts* parts) {
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
 
     parts->protocol[0] = '\0';
     parts->host[0] = '\0';
@@ -89,16 +89,16 @@ void parse_url_parts(const char* url, struct UrlParts* parts) {
     }
 }
 
-bool detect_is_file(const char* url, HrefType type_hint) {
+bool detect_is_file(const char* url, LinkType type_hint) {
     bool is_file = false;
     switch (type_hint) {
-        case HREF_TYPE_HTML:
-        case HREF_TYPE_UNKNOWN: 
+        case LINK_TYPE_HTML:
+        case LINK_TYPE_UNKNOWN: 
             is_file = false;
             break;
-        case HREF_TYPE_IMG:
-        case HREF_TYPE_STYLE:
-        case HREF_TYPE_SCRIPT:
+        case LINK_TYPE_IMG:
+        case LINK_TYPE_STYLE:
+        case LINK_TYPE_SCRIPT:
             is_file = true;
             break;
     }
@@ -106,7 +106,7 @@ bool detect_is_file(const char* url, HrefType type_hint) {
     // Find last '/' occurence
     int i = strlen(url);
     while (i > 0) {
-        if (type_hint == HREF_TYPE_UNKNOWN && url[i] == '.' && is_alphabet(url[i + 1])) {
+        if (type_hint == LINK_TYPE_UNKNOWN && url[i] == '.' && is_alphabet(url[i + 1])) {
             is_file = true;
         }
         else if (url[i] == '/') {
@@ -119,7 +119,7 @@ bool detect_is_file(const char* url, HrefType type_hint) {
 }
 
 void url_to_filepath(const char* url, bool is_file, char* out_path, int* out_dir_len) {
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     const char* from = ptrs.host_start ? ptrs.host_start : url;
     const char* to = ptrs.path_end ? ptrs.path_end : (url + strlen(url));
 

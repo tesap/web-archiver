@@ -14,7 +14,7 @@ struct cmd_args {
     int request_timeout;
     bool is_save;
     int cache_ttl;
-    HrefType type_hint;
+    LinkType type_hint;
 };
 
 struct cmd_args cmd_args = {
@@ -71,19 +71,19 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
                 else if (strcmp(long_options[longindex].name, "type-hint") == 0) {
                     type_hint_flag = true;
                     if (strcmp(optarg, "HTML") == 0) {
-                        cmd_args.type_hint = HREF_TYPE_HTML;
+                        cmd_args.type_hint = LINK_TYPE_HTML;
                     }
                     else if (strcmp(optarg, "STYLE") == 0) {
-                        cmd_args.type_hint = HREF_TYPE_STYLE;
+                        cmd_args.type_hint = LINK_TYPE_STYLE;
                     }
                     else if (strcmp(optarg, "SCRIPT") == 0) {
-                        cmd_args.type_hint = HREF_TYPE_SCRIPT;
+                        cmd_args.type_hint = LINK_TYPE_SCRIPT;
                     }
                     else if (strcmp(optarg, "IMAGE") == 0) {
-                        cmd_args.type_hint = HREF_TYPE_IMG;
+                        cmd_args.type_hint = LINK_TYPE_IMG;
                     }
                     else if (strcmp(optarg, "NO") == 0) {
-                        cmd_args.type_hint = HREF_TYPE_UNKNOWN;
+                        cmd_args.type_hint = LINK_TYPE_UNKNOWN;
                     }
                     else {
                         fprintf(stderr, ANSI_COLOR_RED "Error: unknown option value: %s\n" ANSI_COLOR_RESET, optarg);

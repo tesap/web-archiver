@@ -27,7 +27,7 @@
 
 TEST(url_parser_1) {
     char* url = "https://archlinux.org/asdf/we32";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
     ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
@@ -38,7 +38,7 @@ TEST(url_parser_1) {
 
 TEST(url_parser_2) {
     char* url = "https://archlinux.org/asdf/we32\n\r";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
     ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
@@ -49,7 +49,7 @@ TEST(url_parser_2) {
 
 TEST(url_parser_3) {
     char* url = "https://archlinux.org/asdf/we32#ASDF";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
     ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
@@ -60,7 +60,7 @@ TEST(url_parser_3) {
 
 TEST(url_parser_4) {
     char* url = "archlinux.org";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, NULL);
     ASSERT_EQUAL_INT(ptrs.protocol_end, NULL);
     ASSERT_EQUAL_INT(ptrs.host_start, url);
@@ -71,7 +71,7 @@ TEST(url_parser_4) {
 
 TEST(url_parser_5) {
     char* url = "archlinux.org/path/123";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, NULL);
     ASSERT_EQUAL_INT(ptrs.protocol_end, NULL);
     ASSERT_EQUAL_INT(ptrs.host_start, url);
@@ -82,7 +82,7 @@ TEST(url_parser_5) {
 
 TEST(url_parser_6) {
     char* url = "https://archlinux.org";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, url);
     ASSERT_EQUAL_INT(ptrs.protocol_end, url + 8);
     ASSERT_EQUAL_INT(ptrs.host_start, url + 8);
@@ -94,7 +94,7 @@ TEST(url_parser_6) {
 
 TEST(url_parser_7) {
     char* url = "/asdf/we32/";
-    struct UrlPtrs ptrs = get_url_pointers(url);
+    struct UrlPtrs ptrs = get_url_pointers(url, strlen(url));
     ASSERT_EQUAL_INT(ptrs.protocol_start, NULL);
     ASSERT_EQUAL_INT(ptrs.protocol_end, NULL);
     ASSERT_EQUAL_INT(ptrs.host_start, NULL);

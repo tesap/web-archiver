@@ -19,7 +19,7 @@ struct UrlParts {
 bool is_url_relative(const char* url);
 bool is_url_http(const char* url);
 
-struct UrlPtrs get_url_pointers(const char* url);
+struct UrlPtrs get_url_pointers(const char* url, int size);
 void parse_url_parts(const char* url, struct UrlParts* parts);
-bool detect_is_file(const char* url, HrefType type_hint);
+bool detect_is_file(const char* url, LinkType type_hint);
 void url_to_filepath(const char* url, bool is_file, char* out_path, int* out_dir_len);
