@@ -28,20 +28,20 @@ LinkType tag_link_type(struct HtmlTag* t) {
         return LINK_TYPE_SCRIPT;
     }
 
-    if (t->type_start) {
-        if (strncmp(t->type_start, "text/css", 8) == 0) {
+    if (t->type.ptr) {
+        if (strncmp(t->type.ptr, "text/css", 8) == 0) {
             return LINK_TYPE_STYLE;
         }
-        if (strncmp(t->type_start, "image/", 6) == 0) {
+        if (strncmp(t->type.ptr, "image/", 6) == 0) {
             return LINK_TYPE_IMG;
         }
-        if (strncmp(t->type_start, "text/javascript", 15) == 0) {
+        if (strncmp(t->type.ptr, "text/javascript", 15) == 0) {
             return LINK_TYPE_SCRIPT;
         }
     } else {
-        assert(t->link_start != NULL);
+        assert(t->link.ptr != NULL);
 
-        struct UrlPtrs ptrs = get_url_pointers(t->link_start, t->link_size);
+        struct UrlPtrs ptrs = get_url_pointers(t->link);
         if (strncmp(ptrs.path_end - 4, ".png", 4) == 0) {
             return LINK_TYPE_IMG;
         }
@@ -81,9 +81,9 @@ struct HtmlTag parse_html_tag(const char* buff) {
         { NULL },
         NULL,
         NULL,
-        NULL,
-        NULL,
         NULL
+        // NULL,
+        // NULL
     };
 
     const char* ptr = buff;
@@ -136,11 +136,13 @@ struct HtmlTag parse_html_tag(const char* buff) {
                     int captured_size = ptr - capture_start;
                     if (captured_size > 0) {
                         if (capture_attr == CAPTURE_LINK) {
-                            out.link_start = capture_start;
-                            out.link_size = captured_size;
+                            // out.link = { capture_start, captured_size };
+                            out.link.ptr = (char*)capture_start;
+                            out.link.size = captured_size;
                         } else if (capture_attr == CAPTURE_TYPE) {
-                            out.type_start = capture_start;
-                            out.type_size = captured_size;
+                            // out.type = { capture_start, captured_size };
+                            out.type.ptr = (char*)capture_start;
+                            out.type.size = captured_size;
                         }
                     }
                     progress_step = 0;
@@ -162,8 +164,7 @@ end:
 
 
 void iter_html_tags(
-    const char* buff,
-    int size,
+    struct vec data,
     void(*callback)(struct HtmlTag* t, void* ctx),
     void* ctx
 ) {
@@ -171,13 +172,14 @@ void iter_html_tags(
      * Takes: ptr to string
      * Calls @callback on each occurence of URL
      */
-    const char* ptr = buff;
-    int left = size;
+    const char* init = data.ptr;
+    const char* ptr = data.ptr;
+    int left = data.size;
     while (left > 0 && (ptr = (const char*)memchr(ptr, '<', left))) {
-        left = size - (ptr - buff);
+        left = data.size - (ptr - init);
         
         struct HtmlTag t = parse_html_tag(ptr);
-        if (t.link_start == NULL) {
+        if (t.link.ptr == NULL) {
             ptr++;
             continue;
         }
@@ -186,45 +188,3 @@ void iter_html_tags(
         ptr = t.tag_end + 1;
     }
 }
-//
-//     // TODO can we make it const?
-//     char* el_ptr = (char*)ptr;
-//     while ((el_ptr - ptr) < size) {
-//         struct HtmlTag l = { NULL, 0, NULL, 0 };
-//         char* elem_name;
-//         if (strncmp(el_ptr, "<a", 2) == 0) {
-//             l = parse_html_tag(&el_ptr, "a", "href");
-//             elem_name = "a";
-//         }
-//         else if (strncmp(el_ptr, "<link", 5) == 0) {
-//             l = parse_html_tag(&el_ptr, "link", "href");
-//             elem_name = "link";
-//         }
-//         else if (strncmp(el_ptr, "<img", 4) == 0) {
-//             l = parse_html_tag(&el_ptr, "img", "src");
-//             elem_name = "img";
-//         }
-//         else if (strncmp(el_ptr, "<script", 7) == 0) {
-//             l = parse_html_tag(&el_ptr, "script", "src");
-//             elem_name = "script";
-//         }
-//
-//         if (l.link_start) {
-//             char link_attr[MAX_URL_LENGTH];
-//             char type_attr[64] = "";
-//
-//             memcpy(link_attr, l.link_start, l.link_size);
-//             link_attr[l.link_size] = '\0';
-//
-//             LinkType ht = LINK_TYPE_UNKNOWN;
-//             if (l.type_start) {
-//                 memcpy(type_attr, l.type_start, l.type_size);
-//                 type_attr[l.type_size] = '\0';
-//             }
-//
-//             ht = tag_link_type(link_attr, type_attr, elem_name);
-//             callback(l.link_start, l.link_size, ht, ctx);
-//         }
-//         el_ptr++;
-//     }
-// }

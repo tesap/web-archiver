@@ -12,7 +12,7 @@
             cmp_list, \
             cmp_list_size \
         }; \
-        iter_html_tags(buff, strlen(buff), iter_html_tags_cb, &ctx); \
+        iter_html_tags(vec_wrap(buff), iter_html_tags_cb, &ctx); \
         ASSERT_EQUAL_INT(cmp_index, cmp_list_size); \
     } \
 
@@ -27,7 +27,7 @@
             cmp_list, \
             cmp_list_size \
         }; \
-        iter_html_tags(buff, size, iter_html_tags_cb, &ctx); \
+        iter_html_tags({ buff, size }, iter_html_tags_cb, &ctx); \
     } \
 
 struct CmpEntry {
@@ -48,11 +48,11 @@ void iter_html_tags_cb(struct HtmlTag* t, void* ctx) {
     struct CmpEntry* cmp_list = ctx_struct->cmp_list;
     int cmp_list_size = ctx_struct->cmp_list_size;
 
-    printf("=== (%d) URL: %.*s\n", *cmp_index, t->link_size, t->link_start);
+    printf("=== (%d) URL: %.*s\n", *cmp_index, t->link.size, t->link.ptr);
 
     ASSERT_EQUAL_STR(t->tag_name, cmp_list[*cmp_index].s1);
-    ASSERT_EQUAL_STRN(t->link_start, cmp_list[*cmp_index].s2, t->link_size);
-    ASSERT_EQUAL_STRN(t->type_start, cmp_list[*cmp_index].s3, t->type_size);
+    ASSERT_EQUAL_STRN(t->link.ptr, cmp_list[*cmp_index].s2, t->link.size);
+    ASSERT_EQUAL_STRN(t->type.ptr, cmp_list[*cmp_index].s3, t->type.size);
     ASSERT_EQUAL_STRN(t->tag_end, ">", 1);
     (*cmp_index)++;
 }

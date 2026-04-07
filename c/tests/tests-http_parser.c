@@ -43,7 +43,7 @@
         char* buff; \
         read_file(path, &buff); \
         char result[256]; \
-        int ok = get_location_header(buff, url, result); \
+        int ok = get_location_header(vec_wrap(buff), url, result); \
         ASSERT_EQUAL_INT(ok, 0); \
         ASSERT_EQUAL_STR(result, e1); \
         free(buff); \

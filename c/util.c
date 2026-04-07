@@ -13,6 +13,10 @@
 
 #define BUFFER_SIZE 64
 
+struct vec vec_wrap(const char* s) {
+    return { (char*)s, strlen(s) };
+}
+
 struct vec* vec_init(size_t newsize) {
     struct vec* v = (struct vec*)malloc(sizeof(struct vec));
     v->ptr = (char*)malloc(sizeof(char) * newsize);
@@ -25,9 +29,13 @@ void vec_deinit(struct vec* v) {
     free(v);
 }
 
-void vec_append(struct vec* v, const char* recv_buff, size_t newsize) {
-    if (newsize <= 0) {
-        // fprintf(stderr, ANSI_COLOR_RED "==== Error vec_append: newsize = %d\n" ANSI_COLOR_RESET, newsize);
+void vec_terminate(struct vec* v) {
+    v->ptr[v->size] = '\0';
+}
+
+void vec_append(struct vec* v, bool is_dynamic, struct vec add) {
+    if (add.size <= 0) {
+        // fprintf(stderr, ANSI_COLOR_RED "==== Error vec_append: addsize = %d\n" ANSI_COLOR_RESET, addsize);
         return;
     }
     if (!v || !v->ptr) {
@@ -35,17 +43,23 @@ void vec_append(struct vec* v, const char* recv_buff, size_t newsize) {
         exit(1);
     }
 
-    void* ptr = realloc(v->ptr, v->size + newsize);
-    if(!ptr) {
-        /* out of memory */
-        fprintf(stderr, "Not enough memory (realloc returned NULL): %s\n", strerror(errno));
-        exit(1);
-        return;
+    if (is_dynamic) {
+        void* ptr = realloc(v->ptr, v->size + add.size);
+        if(!ptr) {
+            /* out of memory */
+            fprintf(stderr, "Not enough memory (realloc returned NULL): %s\n", strerror(errno));
+            exit(1);
+            return;
+        }
+        v->ptr = (char *)ptr;
     }
-    v->ptr = (char *)ptr;
 
-    memcpy((v->ptr + v->size), recv_buff, newsize);
-    v->size += newsize;
+    memcpy((v->ptr + v->size), add.ptr, add.size);
+    v->size += add.size;
+}
+
+void vec_append_cstring(struct vec* v, bool is_dynamic, const char* recv_buff) {
+    vec_append(v, is_dynamic, vec_wrap(recv_buff));
 }
 
 bool is_number(const char* s) {

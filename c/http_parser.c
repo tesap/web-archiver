@@ -29,8 +29,8 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
         *content_started = true;
         vec_append(
             content_vec,
-            recv_buff + content_offset_in_buff,
-            size - content_offset_in_buff
+            true,
+            { (char*)recv_buff + content_offset_in_buff, size - content_offset_in_buff }
         );
         return;
     }
@@ -40,31 +40,31 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
         size_t header_size_in_buff = pattern_ptr - recv_buff;
         vec_append(
             headers_vec,
-            recv_buff,
-            header_size_in_buff
+            true,
+            {(char*)recv_buff, header_size_in_buff}
         );
 
         size_t content_offset_in_buff = header_size_in_buff + 4;
         *content_started = true;
         vec_append(
             content_vec,
-            recv_buff + content_offset_in_buff,
-            size - content_offset_in_buff
+            true,
+            {(char*)recv_buff + content_offset_in_buff, size - content_offset_in_buff}
         );
         return;
     }
 
     if (*content_started) {
-        vec_append(content_vec, recv_buff, size);
+        vec_append(content_vec, true, {(char*)recv_buff, size});
     } else {
-        vec_append(headers_vec, recv_buff, size);
+        vec_append(headers_vec, true, {(char*)recv_buff, size});
     }
 }
 
-int get_location_header(const char* headers_buff, const char* request_url, char* result) {
-    const char* header_start = strstr(headers_buff, "Location: ");
+int get_location_header(struct vec headers_data, const char* request_url, char* result) {
+    const char* header_start = strstr(headers_data.ptr, "Location: ");
     if (!header_start) {
-        header_start = strstr(headers_buff, "location: ");
+        header_start = strstr(headers_data.ptr, "location: ");
         if (!header_start) {
             fprintf(stderr, "=== Error searching for 'Location: ' pattern\n");
             return -1;
@@ -73,9 +73,12 @@ int get_location_header(const char* headers_buff, const char* request_url, char*
 
     const char* value_start = header_start + 10;
     size_t value_len = strlen_with_delims(value_start);
+    if (value_start + value_len > headers_data.ptr + headers_data.size) {
+        value_len = headers_data.ptr + headers_data.size - value_start;
+    }
 
     if (is_url_relative(value_start)) {
-        struct UrlPtrs ptrs = get_url_pointers(request_url, strlen(request_url));
+        struct UrlPtrs ptrs = get_url_pointers(vec_wrap(request_url));
         // Copy part of URL without path
         int len = ptrs.host_end - request_url;
         memcpy(result, request_url, len);

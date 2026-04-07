@@ -10,7 +10,8 @@
 #include "./cached_network.h"
 
 struct cmd_args {
-    const char* url;
+    struct vec url;
+    // const char* url;
     int request_timeout;
     bool is_save;
     int cache_ttl;
@@ -18,14 +19,14 @@ struct cmd_args {
 };
 
 struct cmd_args cmd_args = {
-    .url = "",
+    .url = NULL,
     .request_timeout = DEFAULT_REQUEST_TIMEOUT,
     .is_save = false,
     .cache_ttl = 0,
 };
 
 void exit_args_error() {
-    fprintf(stderr, "Usage: ./cached_curl -a <addr> [-p <period>] [-t <timeout]\n");
+    fprintf(stderr, "Usage: ./cached_curl -a <addr> [-t <timeout]\n");
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "\t-a, --address <addr>\tURL to download\n");
     fprintf(stderr, "\t-t, --timeout <val>\tTimeout for TCP requests (in miliseconds) (default: %d)\n", DEFAULT_REQUEST_TIMEOUT);
@@ -96,7 +97,8 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
                     exit_args_error();
                 }
                 a_flag = strlen(optarg) > 0;
-                args->url = optarg;
+                args->url.ptr = optarg;
+                args->url.size = strlen(optarg);
                 break;
             case 't':
                 if (t_flag) {

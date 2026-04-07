@@ -19,7 +19,7 @@ ${OUT}/hrefs_crawler: hrefs_crawler.c url_parser.c html_parser.c network.c util.
 ${OUT}/cached_curl: http_parser.c network.c url_parser.c cached_network.c util.c cached_curl.c | out
 	${GCC} ${FLAGS} $^ -o $@
     
-${OUT}/links_replacer: links_replacer.c | out
+${OUT}/links_replacer: util.c html_parser.c url_parser.c links_replacer.c | out
 	${GCC} ${FLAGS} $^ -o $@
     
 ${OUT}/tests-url_parser: tests/tests-url_parser.c url_parser.c util.c | out

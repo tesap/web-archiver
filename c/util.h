@@ -1,4 +1,7 @@
 
+#ifndef UTIL_H
+#define UTIL_H
+
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -8,14 +11,19 @@
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 struct vec {
-    size_t size;
     char* ptr;
-    bool allocated;
+    size_t size;
+    // bool allocated;
 };
+
+struct vec vec_wrap(const char* s);
+void vec_terminate(struct vec* v);
 
 struct vec* vec_init(size_t newsize);
 void vec_deinit(struct vec* v);
-void vec_append(struct vec* v, const char* recv_buff, size_t newsize);
+void vec_append(struct vec* v, bool is_dynamic, struct vec add);
+// void vec_append(struct vec* v, bool is_dynamic, const char* recv_buff, size_t newsize);
+void vec_append_cstring(struct vec* v, bool is_dynamic, const char* recv_buff);
 
 bool is_number(const char* s);
 bool is_alphabet(char c);
@@ -32,3 +40,5 @@ int write_file(const char* path, const char* buff, size_t buff_size);
 
 bool mkdir_p(const char* dir);
 void strip_end(char* s, char c);
+
+#endif

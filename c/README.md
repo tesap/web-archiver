@@ -5,25 +5,31 @@ This is a collection of Unix-style programs that being combined allow to **recur
 
 Code: Written in modern C, compiled with g++ (C++ compiler)
 
+## Usage
+
+For example usage see `./all.sh` file that combines all three programs into a complete pipeline.
+You can learn more by looking up for `--help` outputs of compiled executables.
+
 ## TODO
 
 - Common
     - [x] Fix long connect time
     - [ ] network.c: Maybe we can cache socket connections in redirection cases to avoid double work
     - [ ] Add logging functions
-    - [ ] Check for unfreed mallocs
+    - [ ] Check for memory leaks, unfreed mallocs
+    - [ ] Comprehensive tests, especially for `url_parser.c`
 - `hrefs_crawler`:
     - [x] Replace dependency on libcurl with manual HTTP/SSL file download with libssl + sockets
     - [x] Parse content type header to filter out non-html files
-    - [ ] Caching for downloaded URIs. Track HashMap of crawled URLs to avoid redundant TCP requests
     - [x] Fs-caching of downloaded pages
+        - [ ] Improve it with caching by HashMap struct.
     - [x] Add (URL -> path) parsing + tests 
 - `cached_curl`: Downloads a given URL to a given path
     - [x] Implement writing file to FS.
     - [ ] Rely on HTTP headers to better determine dir/file category (content-type header). Make it a file only in case non text/html
     - [-] Try replacing it with cURL
-- `html_links_replacer`
-    - [ ] Implement links replacement to relative paths in HTML page
+- `links_replacer`
+    - [x] Implement links replacement to relative paths in HTML page
 - `master`: A master process that combines all programs together
     - [ ] Implement simple logic of complete chain
     - [ ] Support stateful

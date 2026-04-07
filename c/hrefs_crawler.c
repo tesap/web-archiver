@@ -57,25 +57,25 @@ void on_found_url_callback(struct HtmlTag* t, void* ctx) {
     int depth_level = ctx_struct->depth_level;
 
     assert(page_url != NULL);
-    assert(t->link_start != NULL);
-    assert(t->link_size > 0);
+    assert(t->link.ptr != NULL);
+    assert(t->link.size > 0);
     assert(strlen(page_url) != 0);
 
     char result_url[MAX_URL_LENGTH] = "";
 
-    if (is_url_http(t->link_start)) {
-        memcpy(result_url, t->link_start, t->link_size);
-        result_url[t->link_size] = '\0';
-    } else if (is_url_relative(t->link_start)) {
+    if (is_url_http(t->link.ptr)) {
+        memcpy(result_url, t->link.ptr, t->link.size);
+        result_url[t->link.size] = '\0';
+    } else if (is_url_relative(t->link.ptr)) {
         struct UrlParts p_page;
         parse_url_parts(page_url, &p_page);
         char* protocol = p_page.protocol;
         char* host = p_page.host;
         
-        int full_url_len = strlen(protocol) + strlen(host) + t->link_size + 1;
+        int full_url_len = strlen(protocol) + strlen(host) + t->link.size + 1;
         char full_url[full_url_len];
 
-        sprintf(full_url, "%s%s%.*s", protocol, host, t->link_size, t->link_start);
+        sprintf(full_url, "%s%s%.*s", protocol, host, t->link.size, t->link.ptr);
         memcpy(result_url, full_url, full_url_len);
     }
 
@@ -131,8 +131,9 @@ void crawl_urls(const char* url, int depth_level) {
 
     struct HttpPage downloaded_page;
     // TODO replace with fork(./cached_curl ...)
+    struct vec url_v = { (char*)url, strlen(url) };
     int res = cached_download_http(
-        url,
+        url_v,
         cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
@@ -146,8 +147,7 @@ void crawl_urls(const char* url, int depth_level) {
             depth_level,
         };
         iter_html_tags(
-            downloaded_page.content_vec->ptr,
-            downloaded_page.content_vec->size,
+            *downloaded_page.content_vec,
             on_found_url_callback,
             &ctx
         );
