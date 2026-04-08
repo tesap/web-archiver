@@ -3,6 +3,6 @@ resources/
 out/
 .venv
 .old
-*.html
+# *.html
 *.urls
 *.o
