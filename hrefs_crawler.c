@@ -12,17 +12,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "./url_parser.h"
-#include "./html_parser.h"
-#include "./network.h"
-#include "./cached_network.h"
 #include "./util.h"
-
-typedef enum {
-    DOMAIN_FILTER_NO,
-    DOMAIN_FILTER_SAME,
-    DOMAIN_FILTER_SUBDOMAIN,
-} DomainFilterType;
 
 struct cmd_args {
     const char* root_url;
@@ -35,7 +25,7 @@ struct cmd_args {
 };
 
 struct FoundUrlCallbackCtx {
-    const char* page_url;
+    struct vec page_url;
     int depth_level;
 };
 
@@ -49,56 +39,30 @@ struct cmd_args cmd_args = {
     .cache_ttl = 0,
 };
 
-void crawl_urls(const char* url, int depth_level);
+void crawl_urls(struct vec url, int depth_level);
 
 void on_found_url_callback(struct HtmlTag* t, void* ctx) {
     struct FoundUrlCallbackCtx* ctx_struct = (struct FoundUrlCallbackCtx*)ctx;
-    const char* page_url = ctx_struct->page_url;
+    struct vec page_url = ctx_struct->page_url;
     int depth_level = ctx_struct->depth_level;
 
-    assert(page_url != NULL);
+    assert(page_url.ptr != NULL);
+    assert(page_url.size > 0);
     assert(t->link.ptr != NULL);
     assert(t->link.size > 0);
-    assert(strlen(page_url) != 0);
 
-    char result_url[MAX_URL_LENGTH] = "";
-
-    if (is_url_http(t->link.ptr)) {
-        memcpy(result_url, t->link.ptr, t->link.size);
-        result_url[t->link.size] = '\0';
-    } else if (is_url_relative(t->link.ptr)) {
-        struct UrlParts p_page;
-        parse_url_parts(page_url, &p_page);
-        char* protocol = p_page.protocol;
-        char* host = p_page.host;
-        
-        int full_url_len = strlen(protocol) + strlen(host) + t->link.size + 1;
-        char full_url[full_url_len];
-
-        sprintf(full_url, "%s%s%.*s", protocol, host, t->link.size, t->link.ptr);
-        memcpy(result_url, full_url, full_url_len);
+    if (starts_with(t->link, vec_wrap("../"))) {
+        return;
     }
 
-    if (strlen(result_url) == 0) return;
+    char _res_url[MAX_URL_LENGTH];
+    struct vec res_url = {_res_url, 0};
 
-    if (cmd_args.filter_type != DOMAIN_FILTER_NO) {
-        struct UrlParts p_result, p_page;
-        parse_url_parts(result_url, &p_result);
-        parse_url_parts(page_url, &p_page);
-        if (cmd_args.filter_type == DOMAIN_FILTER_SAME) {
-            if (strcmp(p_result.host, p_page.host) != 0) {
-                return;
-            }
-        }
-        if (cmd_args.filter_type == DOMAIN_FILTER_SUBDOMAIN) {
-            // Check whether result_url is a subdomain of page_url, f.e.:
-            // p_result.host =  terms.archlinux.org
-            // p_page.host   =        archlinux.org
-            // Then first is a subdomain of the second
-            if (!ends_with(p_result.host, p_page.host)) {
-                return;
-            }
-        }
+    // For now we are only interested in printing the right URL, not saving it.
+    link_to_full_url(t->link, page_url, &res_url);
+
+    if (!should_crawl_url(res_url, page_url, cmd_args.filter_type)) {
+        return;
     }
 
     // Finally print URL to stdout
@@ -110,15 +74,15 @@ void on_found_url_callback(struct HtmlTag* t, void* ctx) {
         case LINK_TYPE_SCRIPT: printf("SCRIPT"); break;
         case LINK_TYPE_HTML: printf("HTML"); break;
     }
-    fprintf(stdout, "\t%s\n", result_url);
+    fprintf(stdout, "\t%.*s\n", res_url.size, res_url.ptr);
 
     if (lt == LINK_TYPE_HTML) {
         // Crawl URLs recursively
-        crawl_urls(result_url, depth_level - 1);
+        crawl_urls(res_url, depth_level - 1);
     }
 }
 
-void crawl_urls(const char* url, int depth_level) {
+void crawl_urls(struct vec url, int depth_level) {
     /*
      * The algorithm is:
      * - Retrieve requested URL
@@ -129,11 +93,10 @@ void crawl_urls(const char* url, int depth_level) {
         return;
     }
 
-    struct HttpPage downloaded_page;
-    // TODO replace with fork(./cached_curl ...)
-    struct vec url_v = { (char*)url, strlen(url) };
+    char _effective_url[256];
+    struct HttpPage downloaded_page = HttpPage_init(_effective_url);
     int res = cached_download_http(
-        url_v,
+        url,
         cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
@@ -147,18 +110,10 @@ void crawl_urls(const char* url, int depth_level) {
             depth_level,
         };
         iter_html_tags(
-            *downloaded_page.content_vec,
+            downloaded_page.content_vec,
             on_found_url_callback,
             &ctx
         );
-
-        // Cleanup
-        if (downloaded_page.headers_vec != NULL) {
-            vec_deinit(downloaded_page.headers_vec);
-        }
-        if (downloaded_page.content_vec != NULL) {
-            vec_deinit(downloaded_page.content_vec);
-        }
     }
 
     // Page was downloaded from network
@@ -166,6 +121,8 @@ void crawl_urls(const char* url, int depth_level) {
         // Wait period between network requests
         usleep(cmd_args.request_period * 1000); 
     }
+cleanup:
+    HttpPage_dealloc(downloaded_page);
 }
 
 void exit_args_error() {
@@ -287,7 +244,7 @@ int main(int argc, char* argv[]) {
     SSL_load_error_strings();
     OpenSSL_add_all_algorithms();
 
-    crawl_urls(cmd_args.root_url, cmd_args.depth_level);
+    crawl_urls(vec_wrap(cmd_args.root_url), cmd_args.depth_level);
 
     return 0;
 }

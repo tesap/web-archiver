@@ -7,7 +7,7 @@
 #include <ctype.h>
 
 #include "./util.h"
-#include "./cached_network.h"
+// #include "./cached_network.h"
 
 struct cmd_args {
     struct vec url;
@@ -44,7 +44,7 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
     while (1) {
         static struct option long_options[] = {
             {"address",             required_argument, 0, 'a'},
-            {"request-timeout",     required_argument, 0, 't'},
+            {"timeout",             required_argument, 0, 't'},
             {"save",                no_argument, 0, 0},
             {"cache-ttl",           required_argument, 0, 0},
             {"type-hint",           required_argument, 0, 0},
@@ -134,14 +134,15 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
 int main(int argc, char* argv[]) {
     parse_cmd_args(argc, argv, &cmd_args);
 
-    struct HttpPage downloaded_page;
+    char _eff_url[256];
+    struct HttpPage page = HttpPage_init(_eff_url);
     int res = cached_download_http(
         cmd_args.url,
         cmd_args.request_timeout,
         cmd_args.is_save,
         cmd_args.cache_ttl,
         cmd_args.type_hint,
-        &downloaded_page
+        &page
     );
 
     return res;
