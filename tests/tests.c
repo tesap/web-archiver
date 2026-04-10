@@ -331,10 +331,15 @@ TEST_FILE_iter_html_tags(6, TESTS_FILES_PATH "/archlinux.org.html", cmp_list6, c
     TEST(get_location_header__##name) { \
         char* buff; \
         read_file(path, &buff); \
-        char result[256]; \
-        int ok = get_location_header(vec_wrap(buff), vec_wrap(url), result); \
-        ASSERT_EQUAL_INT(ok, 0); \
-        ASSERT_EQUAL_STR(result, e1); \
+        char _mem[256]; \
+        struct vec result = {_mem, 0}; \
+        int ok = get_location_header(vec_wrap(buff), vec_wrap(url), &result); \
+        if (strlen(e1) > 0) { \
+            ASSERT_EQUAL_INT(ok, 0); \
+            ASSERT_EQUAL_VEC(result, vec_wrap(e1)); \
+        } else {\
+            ASSERT_EQUAL_INT(ok, -1); \
+        } \
         free(buff); \
     } \
 
@@ -345,6 +350,7 @@ TEST_parse_http_stream_chunk(6, TESTS_FILES_PATH "/archlinux.org-mirrors.http", 
 TEST_FILE_get_location_header(7, TESTS_FILES_PATH "/wiki.archlinux.org.http", "wiki.archlinux.org", "https://wiki.archlinux.org/title/Main_page");
 TEST_FILE_get_location_header(8, TESTS_FILES_PATH "/archlinux.org.http", "archlinux.org", "https://archlinux.org/");
 TEST_FILE_get_location_header(9, TESTS_FILES_PATH "/lists.archlinux.org.http", "https://lists.archlinux.org", "https://lists.archlinux.org/mailman3/lists/");
+TEST_FILE_get_location_header(10, TESTS_FILES_PATH "/lists.archlinux.org.http.lack", "https://lists.archlinux.org", "");
 
 TEST(http_parser_10) {
 

@@ -127,7 +127,7 @@ void print_sockaddr(struct sockaddr* sa);
 
 // --- http_parser.c
 void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* headers_vec, struct vec* content_vec, bool* content_started);
-int get_location_header(struct vec headers_data, struct vec request_url, char* result);
+int get_location_header(struct vec headers_data, struct vec request_url, struct vec* out);
 // ---
 
 // -- html_parser.c

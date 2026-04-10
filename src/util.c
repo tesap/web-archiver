@@ -682,12 +682,13 @@ int download_http(struct vec url, int timeout_sec, struct HttpPage* out) {
         fprintf(stderr, "=== Error parsing status_code: %.*s...\n", 20, headers_vec.ptr);
         return -1;
     } else if (status_code == 301 || status_code == 302) {
-        char redirect_url[256];
-        if (get_location_header(headers_vec, url, redirect_url) != 0) {
+        char _mem1[256];
+        struct vec redirect_url = {_mem1, 0};
+        if (get_location_header(headers_vec, url, &redirect_url) != 0) {
             return -1;
         }
         // printf("--- FOUND REDIRECT Location: %s\n", redirect_url);
-        return download_http(vec_wrap(redirect_url), timeout_sec, out);
+        return download_http(redirect_url, timeout_sec, out);
     } else if (status_code == 200) {
         if (out) {
             out->headers_vec = headers_vec;
@@ -760,7 +761,7 @@ void parse_http_stream_chunk(const char* recv_buff, int size, struct vec* header
     }
 }
 
-int get_location_header(struct vec headers_data, struct vec request_url, char* result) {
+int get_location_header(struct vec headers_data, struct vec request_url, struct vec* out) {
     const char* header_start = strstr(headers_data.ptr, "Location: ");
     if (!header_start) {
         header_start = strstr(headers_data.ptr, "location: ");
@@ -769,25 +770,13 @@ int get_location_header(struct vec headers_data, struct vec request_url, char* r
             return -1;
         }
     }
-
     const char* value_start = header_start + 10;
     size_t value_len = strlen_with_delims(value_start);
     if (value_start + value_len > headers_data.ptr + headers_data.size) {
         value_len = headers_data.ptr + headers_data.size - value_start;
     }
 
-    if (is_abs_path(value_start)) {
-        struct UrlPtrs ptrs = url_pointers(request_url);
-        // Copy part of URL without path
-        int len = ptrs.host_end - request_url.ptr;
-        memcpy(result, request_url.ptr, len);
-        // Append redirection relative path 
-        memcpy(result + len, value_start, value_len);
-        result[len + value_len] = '\0';
-    } else {
-        memcpy(result, value_start, value_len);
-        result[value_len] = '\0';
-    }
+    link_to_full_url((struct vec){value_start, value_len}, request_url, out);
     return 0;
 }
 
