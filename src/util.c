@@ -167,7 +167,7 @@ void debug_string(const char *ptr, int size, const char *name) {
     }
     printf("' (length: %zu)\n", strlen(ptr));
 }
-// LCOV_EXCL_START
+// LCOV_EXCL_STOP
 
 size_t strlen_with_delims(const char *s) {
     const char* i = s;
@@ -961,7 +961,7 @@ end:
 
 void iter_html_tags(
     struct vec data,
-    void(*callback)(struct HtmlTag* t, void* ctx),
+    void(*callback)(struct HtmlTag* t, const void* ctx, FILE* fout),
     void* ctx
 ) {
     /*
@@ -980,7 +980,7 @@ void iter_html_tags(
             continue;
         }
 
-        callback(&t, ctx);
+        callback(&t, ctx, stdout);
         ptr = t.tag_end + 1;
     }
 }

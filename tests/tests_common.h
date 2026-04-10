@@ -13,7 +13,6 @@ static char tests_names[TESTS_MAX_COUNT][1024];
 static test_func_t tests_ptrs[TESTS_MAX_COUNT];
 static int test_func_i = 0;
 
-#define TESTS_FILES_PATH "tests-files"
 #define TEST(name) \
     void test_##name(); \
     __attribute__((constructor)) \

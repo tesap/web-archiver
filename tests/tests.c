@@ -13,9 +13,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <limits.h>
 
 #include "tests_common.h"
 #include "util.h"
+#include "hrefs_crawler.h"
 
 #define TEST_lstrip(name, s, suff, res_expected) \
     TEST(lstrip__##name) { \
@@ -163,7 +165,7 @@ struct TestCallbackCtx {
     int cmp_list_size;
 };
 
-void iter_html_tags_cb(struct HtmlTag* t, void* ctx) {
+void iter_html_tags_cb(struct HtmlTag* t, const void* ctx, FILE* fout) {
     struct TestCallbackCtx* ctx_struct = (struct TestCallbackCtx*)ctx;
     int* cmp_index = ctx_struct->cmp_index;
     struct CmpEntry* cmp_list = ctx_struct->cmp_list;
@@ -681,7 +683,42 @@ TEST_should_crawl_url(11, "https://wiki.archlinux.org", "https://archlinux.org",
 TEST_should_crawl_url(12, "https://wiki.archlinux.org", "https://archlinux.org", DOMAIN_FILTER_SAME, false);
 TEST_should_crawl_url(13, "https://wiki.archlinux.org", "https://archlinux.org", DOMAIN_FILTER_SUBDOMAIN, true);
 
+bool crawl_urls_called = false;
+int crawl_urls_arg_depth_level = INT_MIN;
+struct vec crawl_urls_arg_url = {NULL, 0};
+
+void crawl_urls_mock(struct vec url, int depth_level) {
+    fprintf(stderr, "==== CRAWL_URLS_MOCK: %.*s, %d\n", url.size, url.ptr, depth_level);
+    crawl_urls_called = true;
+    crawl_urls_arg_depth_level = depth_level;
+    crawl_urls_arg_url = url;
+}
+
+#define TEST_crawl_url_cb(name, tag_name, link, type, page_url, depth_level, called_exp, url_exp) \
+    TEST(crawl_url_cb__##name) { \
+        struct RecursiveCrawlCtx ctx = { \
+            vec_wrap(page_url), \
+            depth_level, \
+            crawl_urls_mock \
+        }; \
+        struct HtmlTag t = {tag_name, NULL, vec_wrap(link), vec_wrap(type)}; \
+        on_found_url_callback(&t, &ctx, stderr); \
+        ASSERT_EQUAL_INT(crawl_urls_called, called_exp); \
+        if (called_exp) { \
+            ASSERT_EQUAL_INT(crawl_urls_arg_depth_level, depth_level - 1); \
+            ASSERT_EQUAL_VEC(crawl_urls_arg_url, vec_wrap(url_exp)); \
+            crawl_urls_called = false; \
+        } \
+    } \
+
+TEST_crawl_url_cb(0, "link", "/static/archlinux_common_style/navbar.css", "text/css", "https://archlinux.org/index.html", 1, false, "");
+TEST_crawl_url_cb(1, "a", "/content.html", "", "https://archlinux.org/index.html", 1, true, "https://archlinux.org/content.html");
+TEST_crawl_url_cb(2, "a", "/a/b/c/content.html", "", "https://archlinux.org/packages/index.html", 1, true, "https://archlinux.org/a/b/c/content.html");
+TEST_crawl_url_cb(3, "a", "a/b/c/content.html", "", "https://archlinux.org/packages/index.html", 1, true, "https://archlinux.org/packages/a/b/c/content.html");
+
+
 int main() {
+    fclose(stderr);
     run_tests();
 }
 

@@ -15,17 +15,15 @@ You can learn more by looking up for `--help` outputs of compiled executables.
 - Common
     - [x] Fix long connect time
     - [ ] `download_http`: Maybe we can cache socket connections in redirection cases to avoid double work
-    - [ ] Test `cached_download_http` and `download_http` with mock networking
-    - [ ] Add logging functions
-    - [ ] Check for memory leaks, unfreed mallocs
+    - [ ] Test `cached_download_http` and `download_http` with mocked network
     - [ ] Improve URL relpath resolving, f.e. `doc.rust-lang.org/stable/rustc/../cargo/index.html`
 - `hrefs_crawler`:
     - [x] Replace dependency on libcurl with manual HTTP/SSL file download with libssl + sockets
     - [x] Parse content type header to filter out non-html files
     - [x] Fs-caching of downloaded pages
-        - [ ] Improve it with caching by HashMap struct.
+        - [~] Improve it with caching by HashMap struct.
     - [x] Add (URL -> path) parsing + tests 
-    - [ ] Test hrefs_crawler callback logic
+    - [x] Test hrefs_crawler callback logic
 - `cached_curl`: Downloads a given URL to a given path
     - [x] Implement writing file to FS.
     - [ ] Rely on HTTP headers to better determine dir/file category (content-type header). Make it a file only in case non text/html

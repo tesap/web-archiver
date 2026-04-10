@@ -12,7 +12,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "./util.h"
+#include "util.h"
+#include "hrefs_crawler.h"
 
 struct cmd_args {
     const char* root_url;
@@ -24,11 +25,6 @@ struct cmd_args {
     int cache_ttl;
 };
 
-struct FoundUrlCallbackCtx {
-    struct vec page_url;
-    int depth_level;
-};
-
 struct cmd_args cmd_args = {
     .root_url = "",
     .depth_level = DEFAULT_DEPTH_LEVEL,
@@ -38,92 +34,6 @@ struct cmd_args cmd_args = {
     .is_save = false,
     .cache_ttl = 0,
 };
-
-void crawl_urls(struct vec url, int depth_level);
-
-void on_found_url_callback(struct HtmlTag* t, void* ctx) {
-    struct FoundUrlCallbackCtx* ctx_struct = (struct FoundUrlCallbackCtx*)ctx;
-    struct vec page_url = ctx_struct->page_url;
-    int depth_level = ctx_struct->depth_level;
-
-    assert(page_url.ptr != NULL);
-    assert(page_url.size > 0);
-    assert(t->link.ptr != NULL);
-    assert(t->link.size > 0);
-
-    if (starts_with(t->link, vec_wrap("../"))) {
-        return;
-    }
-
-    char _res_url[MAX_URL_LENGTH];
-    struct vec res_url = {_res_url, 0};
-
-    // For now we are only interested in printing the right URL, not saving it.
-    link_to_full_url(t->link, page_url, &res_url);
-
-    if (!should_crawl_url(res_url, page_url, cmd_args.filter_type)) {
-        return;
-    }
-
-    // Finally print URL to stdout
-    LinkType lt = tag_link_type(t);
-    switch (lt) {
-        case LINK_TYPE_UNKNOWN: printf("NO"); break;
-        case LINK_TYPE_IMG: printf("IMAGE"); break;
-        case LINK_TYPE_STYLE: printf("STYLE"); break;
-        case LINK_TYPE_SCRIPT: printf("SCRIPT"); break;
-        case LINK_TYPE_HTML: printf("HTML"); break;
-    }
-    fprintf(stdout, "\t%.*s\n", res_url.size, res_url.ptr);
-
-    if (lt == LINK_TYPE_HTML) {
-        // Crawl URLs recursively
-        crawl_urls(res_url, depth_level - 1);
-    }
-}
-
-void crawl_urls(struct vec url, int depth_level) {
-    /*
-     * The algorithm is:
-     * - Retrieve requested URL
-     * - Traverse HTML to found http hrefs
-     * - Recursively crawl found URLs by a depth of @depth_level
-     */
-    if (depth_level == 0) {
-        return;
-    }
-
-    char _effective_url[256];
-    struct HttpPage downloaded_page = HttpPage_init(_effective_url);
-    int res = cached_download_http(
-        url,
-        cmd_args.request_timeout,
-        cmd_args.is_save,
-        cmd_args.cache_ttl,
-        LINK_TYPE_HTML,
-        &downloaded_page
-    );
-
-    if (res >= 0) {
-        struct FoundUrlCallbackCtx ctx = { 
-            downloaded_page.effective_url,
-            depth_level,
-        };
-        iter_html_tags(
-            downloaded_page.content_vec,
-            on_found_url_callback,
-            &ctx
-        );
-    }
-
-    // Page was downloaded from network
-    if (res == 0) {
-        // Wait period between network requests
-        usleep(cmd_args.request_period * 1000); 
-    }
-cleanup:
-    HttpPage_dealloc(downloaded_page);
-}
 
 void exit_args_error() {
     fprintf(stderr, "Usage: ./hrefs_crawler -a <addr> [-d <depth>] [-p <period>] [-t <timeout]\n");
@@ -235,6 +145,50 @@ void parse_cmd_args(int argc, char* argv[], struct cmd_args* args) {
         fprintf(stderr, ANSI_COLOR_RED "Address argument is required\n" ANSI_COLOR_RESET);
         exit_args_error();
     }
+}
+
+void crawl_urls(struct vec url, int depth_level) {
+    /*
+     * The algorithm is:
+     * - Retrieve requested URL
+     * - Traverse HTML to found http hrefs
+     * - Recursively crawl found URLs by a depth of @depth_level
+     */
+    if (depth_level == 0) {
+        return;
+    }
+
+    char _mem1[256];
+    struct HttpPage downloaded_page = HttpPage_init(_mem1);
+    int res = cached_download_http(
+        url,
+        cmd_args.request_timeout,
+        cmd_args.is_save,
+        cmd_args.cache_ttl,
+        LINK_TYPE_HTML,
+        &downloaded_page
+    );
+
+    if (res >= 0) {
+        struct RecursiveCrawlCtx ctx = { 
+            downloaded_page.effective_url,
+            depth_level,
+            crawl_urls
+        };
+        iter_html_tags(
+            downloaded_page.content_vec,
+            on_found_url_callback,
+            &ctx
+        );
+    }
+
+    // Page was downloaded from network
+    if (res == 0) {
+        // Wait period between network requests
+        usleep(cmd_args.request_period * 1000); 
+    }
+cleanup:
+    HttpPage_dealloc(downloaded_page);
 }
 
 int main(int argc, char* argv[]) {

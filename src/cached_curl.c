@@ -6,8 +6,7 @@
 #include <getopt.h>
 #include <ctype.h>
 
-#include "./util.h"
-// #include "./cached_network.h"
+#include "util.h"
 
 struct cmd_args {
     struct vec url;

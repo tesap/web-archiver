@@ -137,7 +137,7 @@ LinkType tag_link_type(struct HtmlTag* t);
 struct HtmlTag parse_html_tag(const char* buff);
 void iter_html_tags(
     struct vec data,
-    void(*callback)(struct HtmlTag* t, void* ctx),
+    void(*callback)(struct HtmlTag* t, const void* ctx, FILE* fout),
     void* ctx
 );
 
