@@ -459,11 +459,11 @@ TEST(http_parser_14) {
 
 #define TEST_only_host_path(name, url, path_expected) \
     TEST(only_host_path__##name) { \
-        char _filepath[MAX_URL_LENGTH]; \
-        struct vec filepath = {_filepath, 0}; \
+        char _mem[MAX_URL_LENGTH]; \
+        struct vec res = {_mem, 0}; \
         \
-        only_host_path(vec_wrap(url), &filepath); \
-        vec_terminate(&filepath); \
+        only_host_path(vec_wrap(url), &res); \
+        ASSERT_EQUAL_VEC(res, vec_wrap(path_expected)); \
     } \
 
 #define TEST_relpath(name, path_from, path_to, expected_result) \
@@ -582,7 +582,7 @@ TEST_only_host_path(18, "https://archlinux.org/releases/downloads",     "archlin
 TEST_only_host_path(19, "https://archlinux.org/releases/downloads/",    "archlinux.org/releases/downloads");
 // Yes, we want to trfalses as a directories. This is because TODO
 TEST_only_host_path(20, "https://archlinux.org/releases/page.html",     "archlinux.org/releases/page.html");
-TEST_only_host_path(21, "https://archlinux.org/",                       "archlinux.org/");
+TEST_only_host_path(21, "https://archlinux.org/",                       "archlinux.org");
 TEST_only_host_path(22, "https://archlinux.org",                        "archlinux.org");
 TEST_only_host_path(24, "archlinux.org",                                "archlinux.org");
 TEST_only_host_path(25, "https://archlinux.org/packages/webkitgtk-6.0", "archlinux.org/packages/webkitgtk-6.0");
@@ -592,7 +592,8 @@ TEST_only_host_path(28, "archlinux.org/link.net/",                       "archli
 TEST_only_host_path(29, "archlinux.org/static/archweb.css",              "archlinux.org/static/archweb.css");
 TEST_only_host_path(30, "archlinux.org/static/script.js",                "archlinux.org/static/script.js");
 TEST_only_host_path(31, "archlinux.org/static/archlinux_common_style/apple-touch-icon-144x144.png", "archlinux.org/static/archlinux_common_style/apple-touch-icon-144x144.png");
-TEST_only_host_path(32, "https://www.archlinux.org/path/to/smth/",                "www.archlinux.org/path/to/smth");
+TEST_only_host_path(32, "https://www.archlinux.org/path/to/smth/",       "www.archlinux.org/path/to/smth");
+TEST_only_host_path(33, "archlinux.org/mailto:jvinet@zeroflux.org",      "archlinux.org/mailto:jvinet@zeroflux.org");
 
 TEST_relpath(34, "1/2/3", "4", "../../../4");
 TEST_relpath(35, "dir1/dir2/one", "dir1/dir2/second", "../../../dir1/dir2/second");

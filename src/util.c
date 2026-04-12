@@ -32,6 +32,10 @@ struct vec vec_init() {
     return (struct vec) { NULL, 0 };
 }
 
+struct vec vec_tails(const char* left, const char* right) {
+    return (struct vec){left, right - left};
+}
+
 bool vec_eq(struct vec v, const char* cstr) {
     return (strncmp(v.ptr, cstr, v.size) == 0);
 }
@@ -389,11 +393,11 @@ void only_host_path(struct vec url, struct vec* out) {
      * OUTPUT:
      *     - out_path = "www.archlinux.org/path/to/smth"
      */
-    struct UrlParts parts = UrlParts_init();
-    url_parts(url, &parts);
+    struct UrlPtrs ptrs = url_pointers(url);
 
-    vec_append(out, false, parts.host);
-    vec_append(out, false, parts.path);
+    char* substr_start = ptrs.host_start ? ptrs.host_start : ptrs.path_start;
+    char* substr_end = ptrs.path_end ? ptrs.path_end : ptrs.host_end;
+    vec_append(out, false, vec_tails(substr_start, substr_end));
     rstrip(out, '/');
 }
 

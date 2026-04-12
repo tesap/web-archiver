@@ -65,8 +65,7 @@ typedef enum {
 } DomainFilterType;
 
 struct vec vec_wrap(const char* s);
-void vec_terminate(struct vec* v);
-
+struct vec vec_tails(const char* left, const char* right);
 struct vec vec_init();
 struct vec vec_alloc(size_t newsize);
 void vec_dealloc(struct vec v);
@@ -75,6 +74,7 @@ void vec_append_cstring(struct vec* v, bool is_dynamic, const char* recv_buff);
 bool vec_eq(struct vec v, const char* cstr);
 bool vec_eq2(struct vec v1, struct vec v2);
 void vec_to_cstr(struct vec v, char* out);
+void vec_terminate(struct vec* v);
 
 struct HttpPage HttpPage_init(char* stack_buff);
 void HttpPage_dealloc(struct HttpPage p);

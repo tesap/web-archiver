@@ -19,6 +19,8 @@ COVERAGE_FLAGS=-fprofile-arcs \
                -O0 
 # TESTS_FLAGS=-Wl,--wrap=/0
 
+# GCC=../tinycc/tcc
+# GCC=tcc
 GCC=gcc
 # GCC=g++
 
