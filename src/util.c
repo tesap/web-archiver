@@ -1052,20 +1052,6 @@ void printf_consume(FILE* fout, const char** ptr, const char* until) {
     (*ptr) += size;
 }
 
-void link_repr_path(struct HtmlTag* t, struct vec page_hint, struct vec* out) {
-    char _mem1[MAX_URL_LENGTH];
-    struct vec full_url = {_mem1, 0};
-    link_to_full_url(t->link, page_hint, &full_url);
-
-    only_host_path(full_url, out);
-        
-    /* We do not want to add anything additional to representation link. */
-    // LinkType lt = tag_link_type(t);
-    // if (is_url_represents_file(t->link, lt)) {
-    //     vec_append(out, false, vec_wrap("/index.html"));
-    // }
-}
-
 void url_save_path(struct vec url, LinkType lt, struct vec* out) {
     only_host_path(url, out);
 
@@ -1104,16 +1090,30 @@ void replace_links(struct vec data, struct vec page_hint, FILE* fout) {
             continue;
         }
 
+        /* ---- link_repr_path ---
+         * Build representation of href link.
+         */
         char _mem1[MAX_URL_LENGTH];
-        struct vec fp = {_mem1, 0};
-        link_repr_path(&t, page_hint, &fp);
+        struct vec url1 = {_mem1, 0};
+        link_to_full_url(t.link, page_hint, &url1);
 
         char _mem2[MAX_URL_LENGTH];
-        struct vec relpath_ = {_mem2, 0};
+        struct vec url2 = {_mem2, 0};
+        only_host_path(url1, &url2);
+
+        /* We do not want to add anything additional to representation link. */
+        // LinkType lt = tag_link_type(t);
+        // if (is_url_represents_file(t->link, lt)) {
+        //     vec_append(out, false, vec_wrap("/index.html"));
+        // }
+        /* -------------------- */
+
+        char _mem3[MAX_URL_LENGTH];
+        struct vec relpath_ = {_mem3, 0};
         relpath(
             // Cut filename
             (struct vec){ page_hint.ptr, dirname_len(page_hint) },
-            fp,
+            url2,
             &relpath_
         );
 

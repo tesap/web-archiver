@@ -148,7 +148,6 @@ int cached_download_http(struct vec url, int request_timeout, int is_save, int c
 // -- links_replacer.c
 // void printf_consume(int fd_out, const char** ptr, const char* until);
 void replace_links(struct vec data, struct vec filepath_hint, FILE* fout);
-void link_repr_path(struct HtmlTag* t, struct vec page_hint, struct vec* out);
 void url_save_path(struct vec url, LinkType lt, struct vec* out);
 
 // -- hrefs_crawler.c

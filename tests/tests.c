@@ -68,17 +68,6 @@ TEST_is_url_represents_file(5, "https://archlinux.org/static/archlinux_common_st
         ASSERT_EQUAL_VEC(v, vec_wrap(res_expected)); \
     } \
 
-#define TEST_link_repr_path(name, link_type, link, page_url, res_expected) \
-    TEST(link_repr_path__##name) { \
-        char _v[1024]; \
-        struct vec v = {_v, 0}; \
-        struct HtmlTag t = {{ '\0' }, NULL, vec_wrap(link), vec_init()}; \
-        link_type_reverse(link_type, &t); \
-        ASSERT_EQUAL_INT(tag_link_type(&t), link_type); \
-        link_repr_path(&t, vec_wrap(page_url), &v); \
-        ASSERT_EQUAL_VEC(v, vec_wrap(res_expected)); \
-    } \
-
 #define TEST_url_save_path(name, link_type, url, res_expected) \
     TEST(url_save_path__##name) { \
         char _v[1024]; \
@@ -90,10 +79,8 @@ TEST_is_url_represents_file(5, "https://archlinux.org/static/archlinux_common_st
 TEST_link_to_full_url(1, "/static/archlinux_common_style/favicon.png", "./archlinux.org/index.html", "archlinux.org/static/archlinux_common_style/favicon.png");
 TEST_link_to_full_url(2, "https://devblog.archlinux.page", "./archlinux.org/index.html", "https://devblog.archlinux.page");
 TEST_link_to_full_url(3, "/packages/extra/any/aarch64-linux-gnu-glibc/", "./archlinux.org/packages/", "archlinux.org/packages/extra/any/aarch64-linux-gnu-glibc/");
-// TEST_link_to_full_url(4, "https://archlinux.org/packages/?sort=-last_update", "./archlinux.org/index.html", "https://archlinux.org/packages/?sort=-last_update");
-
-
-TEST_link_repr_path(1, LINK_TYPE_HTML, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "./archlinux.org/index.html", "wiki.archlinux.org/title/Arch_Linux_press_coverage");
+TEST_link_to_full_url(4, "https://archlinux.org/packages/?sort=-last_update", "./archlinux.org/index.html", "https://archlinux.org/packages/?sort=-last_update");
+TEST_link_to_full_url(5, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "./archlinux.org/index.html", "https://wiki.archlinux.org/title/Arch_Linux_press_coverage");
 
 TEST_url_save_path(1, LINK_TYPE_HTML, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "wiki.archlinux.org/title/Arch_Linux_press_coverage/index.html");
 TEST_url_save_path(2, LINK_TYPE_HTML, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage/", "wiki.archlinux.org/title/Arch_Linux_press_coverage/index.html");
