@@ -85,7 +85,7 @@ bool is_number(const char* s);
 bool is_alphabet(char c);
 bool starts_with(struct vec s, struct vec suffix);
 bool ends_with(struct vec s, struct vec suffix);
-void debug_string(const char *str, int size, const char *name);
+// void debug_string(const char *str, int size, const char *name);
 size_t strlen_with_delims(const char *s);
 
 size_t file_size(const char* path);
@@ -122,7 +122,7 @@ void join_paths(struct vec p1, struct vec p2, struct vec* out);
 // --- network.c
 int create_tcp_socket(struct vec hostname, const char* service);
 int download_http(struct vec url, int timeout_sec, struct HttpPage* out);
-void print_sockaddr(struct sockaddr* sa);
+// void print_sockaddr(struct sockaddr* sa);
 // ---
 
 // --- http_parser.c
@@ -142,7 +142,6 @@ void iter_html_tags(
 );
 
 // -- cached_network.c
-void save_downloaded_page(const struct HttpPage* hp);
 int cached_download_http(struct vec url, int request_timeout, int is_save, int cache_ttl, LinkType type_hint, struct HttpPage* out);
 
 // -- links_replacer.c

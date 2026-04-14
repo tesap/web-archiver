@@ -19,6 +19,56 @@
 #include "util.h"
 #include "hrefs_crawler.h"
 
+/*
+ * TODO tests for functions to add:
+ * - vec_eq, vec_eq2, vec_to_cstr 
+ * - struct vec on heap
+ * - is_number, is_alphabet, starts_with, ends_with, strlen_with_delims
+ * - file_size, file_mtime, file_exists
+ * - rstrip
+ * 
+ * - url_dirname_len
+ * - first_dir_len
+ * - join_paths
+ *
+ * - download_http, cached_download_http
+ * - parse_html_tag
+ */
+
+#define TEST_vec_append(name, s1, s2, size, res_exp) \
+    TEST(vec_append__##name) { \
+        char _mem[size]; \
+        memcpy(_mem, s1, strlen(s1)); \
+        struct vec v = {_mem, strlen(s1)}; \
+        vec_append(&v, false, vec_wrap(s2)); \
+        ASSERT_EQUAL_VEC(v, vec_wrap(res_exp)); \
+    } \
+    TEST(vec_append_cstring__##name) { \
+        char _mem[size]; \
+        memcpy(_mem, s1, strlen(s1)); \
+        struct vec v = {_mem, strlen(s1)}; \
+        vec_append_cstring(&v, false, s2); \
+        ASSERT_EQUAL_VEC(v, vec_wrap(res_exp)); \
+    } \
+
+TEST_vec_append(1, "1234", "abcd", 8, "1234abcd");
+
+#define TEST_vec_terminate(name, s, size_) \
+    TEST(vec_terminate__##name) { \
+        char _mem[size_]; \
+        memset(_mem, 1, size_); \
+        memcpy(_mem, s, strlen(s)); \
+        struct vec v = {_mem, strlen(s)}; \
+        \
+        ASSERT_EQUAL_INT(v.ptr[v.size] != '\0', true); \
+        vec_terminate(&v); \
+        ASSERT_EQUAL_VEC(v, vec_wrap(s)); \
+        ASSERT_EQUAL_INT(strlen(v.ptr), strlen(s)); \
+        ASSERT_EQUAL_INT(v.ptr[v.size] == '\0', true); \
+    } \
+
+TEST_vec_terminate(1, "1234abcd", 9);
+
 #define TEST_lstrip(name, s, suff, res_expected) \
     TEST(lstrip__##name) { \
         struct vec v = vec_wrap(s); \
