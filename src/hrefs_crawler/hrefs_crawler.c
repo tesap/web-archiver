@@ -23,14 +23,10 @@ void on_found_url_callback(struct HtmlTag* t, const void* ctx_, FILE* fout) {
     assert(t->link.ptr != NULL);
     assert(t->link.size > 0);
 
-    if (starts_with(t->link, vec_wrap("../"))) {
-        return;
-    }
-
     char _mem1[MAX_URL_LENGTH];
     struct vec res_url = {_mem1, 0};
 
-    // For now we are only interested in printing the right URL, not saving it.
+    // For now we are only interested in printing the right URL, not downloading its page.
     link_to_full_url(t->link, ctx->page_url, &res_url);
 
     if (!should_crawl_url(res_url, ctx->page_url, ctx->filter_type)) {

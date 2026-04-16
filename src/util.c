@@ -126,7 +126,7 @@ bool is_alphabet(char c) {
 }
 
 bool starts_with(struct vec s, struct vec suffix) {
-    return (strncmp(s.ptr, suffix.ptr, suffix.size) == 0);
+    return (s.size > 0 && strncmp(s.ptr, suffix.ptr, suffix.size) == 0);
 }
 bool ends_with(struct vec s, struct vec suffix) {
     // If the suffix is longer than the string, it cannot be a suffix.
@@ -491,18 +491,6 @@ int url_dirname_len(struct vec url) {
     } else {
         return url.size;
     }
-}
-
-int first_dir_len(struct vec path) {
-    const char* init = path.ptr;
-    assert(strncmp(path.ptr, "../", 3) != 0);
-
-    while (strncmp(path.ptr, "./", 2) == 0) {
-        path.ptr += 2;
-    }
-    const char* slash_occ = strchr(path.ptr, '/');
-    assert(slash_occ != NULL);
-    return slash_occ - init;
 }
 
 // -- network.c
@@ -925,11 +913,9 @@ struct HtmlTag parse_html_tag(const char* buff) {
                     int captured_size = ptr - capture_start;
                     if (captured_size > 0) {
                         if (capture_attr == CAPTURE_LINK) {
-                            // out.link = { capture_start, captured_size };
                             out.link.ptr = (char*)capture_start;
                             out.link.size = captured_size;
                         } else if (capture_attr == CAPTURE_TYPE) {
-                            // out.type = { capture_start, captured_size };
                             out.type.ptr = (char*)capture_start;
                             out.type.size = captured_size;
                         }
@@ -1149,6 +1135,52 @@ bool should_crawl_url(struct vec url, struct vec page_url, DomainFilterType filt
     }
 }
 
+void normalize(struct vec path, struct vec* out) {
+    if (vec_eq2(path, vec_wrap("/"))) {
+        vec_append(out, false, vec_wrap("/"));
+        return;
+    }
+
+    struct {
+        int start;
+        int len;
+    } stack[path.size / 2 + 1]; 
+    int top = 0;
+
+    int i = 0;
+    if (starts_with(path, vec_wrap("/"))) {
+        vec_append(out, false, vec_wrap("/"));
+    }
+    while (i < path.size) {
+        while (i < path.size && (path.ptr[i] == '/' || path.ptr[i] == '\\')) i++;
+        if (i >= path.size) break;
+
+        int start = i;
+        while (i < path.size && path.ptr[i] != '/' && path.ptr[i] != '\\') i++;
+        int len = i - start;
+
+        if (len == 1 && path.ptr[start] == '.') {
+            // Ignore "."
+        } else if (len == 2 && path.ptr[start] == '.' && path.ptr[start + 1] == '.') {
+            if (top > 0) top--;
+        } else {
+            stack[top].start = start;
+            stack[top].len = len;
+            top++;
+        }
+    }
+
+    for (int j = 0; j < top; j++) {
+        vec_append(out, false, (struct vec){ path.ptr + stack[j].start, stack[j].len });
+        if (j < top - 1) {
+            vec_append(out, false, vec_wrap("/"));
+        }
+    }
+    if (ends_with(path, vec_wrap("/"))) {
+        vec_append(out, false, vec_wrap("/"));
+    }
+}
+
 void link_to_full_url(struct vec link, struct vec page_url, struct vec* out) {
     /*
      * This function build a full URL which a given href link tries to represent.
@@ -1180,12 +1212,19 @@ void link_to_full_url(struct vec link, struct vec page_url, struct vec* out) {
     struct UrlParts p_page_url = UrlParts_init();
     url_parts(page_url, &p_page_url);
 
-    vec_append(out, false, p_page_url.protocol);
-    vec_append(out, false, p_page_url.host);
-    vec_append(out, false, p_page_url.path);
-    rstrip(out, '/');
-    if (!ends_with(*out, vec_wrap("/")) && link.ptr[0] != '/') {
-        vec_append(out, false, vec_wrap("/"));
+    char _mem1[MAX_URL_LENGTH];
+    struct vec full_path = {_mem1, 0};
+    vec_append(&full_path, false, p_page_url.host);
+    vec_append(&full_path, false, p_page_url.path);
+    if (!ends_with(full_path, vec_wrap("/")) && link.ptr[0] != '/') {
+        vec_append(&full_path, false, vec_wrap("/"));
     }
-    vec_append(out, false, link);
+    vec_append(&full_path, false, link);
+
+    char _mem2[MAX_URL_LENGTH];
+    struct vec norm_path = {_mem2, 0};
+    normalize(full_path, &norm_path);
+
+    vec_append(out, false, p_page_url.protocol);
+    vec_append(out, false, norm_path);
 }

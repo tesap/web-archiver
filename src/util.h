@@ -114,15 +114,11 @@ void relpath(
 );
 int dirname_len(struct vec path);
 int url_dirname_len(struct vec url);
-int first_dir_len(struct vec path);
 int dir_count(struct vec path);
-void join_paths(struct vec p1, struct vec p2, struct vec* out);
 // ---
 
 // --- network.c
-int create_tcp_socket(struct vec hostname, const char* service);
 int download_http(struct vec url, int timeout_sec, struct HttpPage* out);
-// void print_sockaddr(struct sockaddr* sa);
 // ---
 
 // --- http_parser.c
@@ -151,6 +147,7 @@ void url_save_path(struct vec url, LinkType lt, struct vec* out);
 
 // -- hrefs_crawler.c
 bool should_crawl_url(struct vec url, struct vec page_url, DomainFilterType filter_type);
+void normalize(struct vec path, struct vec* out);
 void link_to_full_url(struct vec link, struct vec page_url, struct vec* out);
 #endif
 

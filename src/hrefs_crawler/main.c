@@ -173,7 +173,8 @@ void crawl_urls(struct vec url, int depth_level) {
         struct RecursiveCrawlCtx ctx = { 
             downloaded_page.effective_url,
             depth_level,
-            crawl_urls
+            crawl_urls,
+            cmd_args.filter_type
         };
         iter_html_tags(
             downloaded_page.content_vec,

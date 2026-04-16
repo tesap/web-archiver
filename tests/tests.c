@@ -26,10 +26,7 @@
  * - is_number, is_alphabet, starts_with, ends_with, strlen_with_delims
  * - file_size, file_mtime, file_exists
  * - rstrip
- * 
  * - url_dirname_len
- * - first_dir_len
- * - join_paths
  *
  * - download_http, cached_download_http
  * - parse_html_tag
@@ -109,6 +106,19 @@ TEST_is_url_represents_file(2, "https://doc.rust-lang.org/stable/rustc/index.htm
 TEST_is_url_represents_file(3, "https://doc.rust-lang.org/stable/rustc/", LINK_TYPE_HTML, false);
 TEST_is_url_represents_file(4, "https://doc.rust-lang.org/stable/rustc/", LINK_TYPE_HTML, false);
 TEST_is_url_represents_file(5, "https://archlinux.org/static/archlinux_common_style/navbar.css", LINK_TYPE_STYLE, true);
+TEST_is_url_represents_file(6, "https://archlinux.org/static/rss.svg", LINK_TYPE_IMG, true);
+
+#define TEST_normalize(name, path, res_expected) \
+    TEST(normalize__##name) { \
+        char _v[1024]; \
+        struct vec v = {_v, 0}; \
+        normalize(vec_wrap(path), &v); \
+        ASSERT_EQUAL_VEC(v, vec_wrap(res_expected)); \
+    } \
+
+TEST_normalize(1, "doc.rust-lang.org/stable/rustc/../cargo/index.html", "doc.rust-lang.org/stable/cargo/index.html");
+TEST_normalize(2, "archlinux.org/", "archlinux.org/");
+TEST_normalize(3, "/", "/");
 
 #define TEST_link_to_full_url(name, link, page_url, res_expected) \
     TEST(link_to_full_url__##name) { \
@@ -118,6 +128,14 @@ TEST_is_url_represents_file(5, "https://archlinux.org/static/archlinux_common_st
         ASSERT_EQUAL_VEC(v, vec_wrap(res_expected)); \
     } \
 
+TEST_link_to_full_url(1, "/static/archlinux_common_style/favicon.png", "./archlinux.org/index.html", "archlinux.org/static/archlinux_common_style/favicon.png");
+TEST_link_to_full_url(2, "https://devblog.archlinux.page", "./archlinux.org/index.html", "https://devblog.archlinux.page");
+TEST_link_to_full_url(3, "/packages/extra/any/aarch64-linux-gnu-glibc/", "./archlinux.org/packages/", "archlinux.org/packages/extra/any/aarch64-linux-gnu-glibc/");
+TEST_link_to_full_url(4, "https://archlinux.org/packages/?sort=-last_update", "./archlinux.org/index.html", "https://archlinux.org/packages/?sort=-last_update");
+TEST_link_to_full_url(5, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "./archlinux.org/index.html", "https://wiki.archlinux.org/title/Arch_Linux_press_coverage");
+TEST_link_to_full_url(6, "../cargo/index.html", "https://doc.rust-lang.org/stable/rustc/index.html", "https://doc.rust-lang.org/stable/cargo/index.html");
+TEST_link_to_full_url(7, "/", "./archlinux.org/index.html", "archlinux.org/");
+
 #define TEST_url_save_path(name, link_type, url, res_expected) \
     TEST(url_save_path__##name) { \
         char _v[1024]; \
@@ -126,11 +144,6 @@ TEST_is_url_represents_file(5, "https://archlinux.org/static/archlinux_common_st
         ASSERT_EQUAL_VEC(v, vec_wrap(res_expected)); \
     } \
 
-TEST_link_to_full_url(1, "/static/archlinux_common_style/favicon.png", "./archlinux.org/index.html", "archlinux.org/static/archlinux_common_style/favicon.png");
-TEST_link_to_full_url(2, "https://devblog.archlinux.page", "./archlinux.org/index.html", "https://devblog.archlinux.page");
-TEST_link_to_full_url(3, "/packages/extra/any/aarch64-linux-gnu-glibc/", "./archlinux.org/packages/", "archlinux.org/packages/extra/any/aarch64-linux-gnu-glibc/");
-TEST_link_to_full_url(4, "https://archlinux.org/packages/?sort=-last_update", "./archlinux.org/index.html", "https://archlinux.org/packages/?sort=-last_update");
-TEST_link_to_full_url(5, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "./archlinux.org/index.html", "https://wiki.archlinux.org/title/Arch_Linux_press_coverage");
 
 TEST_url_save_path(1, LINK_TYPE_HTML, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage", "wiki.archlinux.org/title/Arch_Linux_press_coverage/index.html");
 TEST_url_save_path(2, LINK_TYPE_HTML, "https://wiki.archlinux.org/title/Arch_Linux_press_coverage/", "wiki.archlinux.org/title/Arch_Linux_press_coverage/index.html");
@@ -726,6 +739,8 @@ TEST_should_crawl_url(10, "https://archlinux.org", "https://archlinux.org", DOMA
 TEST_should_crawl_url(11, "https://wiki.archlinux.org", "https://archlinux.org", DOMAIN_FILTER_NO, true);
 TEST_should_crawl_url(12, "https://wiki.archlinux.org", "https://archlinux.org", DOMAIN_FILTER_SAME, false);
 TEST_should_crawl_url(13, "https://wiki.archlinux.org", "https://archlinux.org", DOMAIN_FILTER_SUBDOMAIN, true);
+
+TEST_should_crawl_url(14, "https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustc", "https://doc.rust-lang.org/stable/rustc/index.html", DOMAIN_FILTER_SAME, false);
 
 bool crawl_urls_called = false;
 int crawl_urls_arg_depth_level = INT_MIN;
