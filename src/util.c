@@ -529,10 +529,45 @@ void print_sockaddr(struct sockaddr* sa) {
 }
 // LCOV_EXCL_STOP
 
-int create_tcp_socket(struct vec hostname, const char* service) {
+// LCOV_EXCL_START
+int connect_with_timeout(int sockfd, struct sockaddr *addr, socklen_t addrlen, int timeout_sec) {
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+
+    int res = connect(sockfd, addr, addrlen);
+    if (res < 0 && errno != EINPROGRESS) {
+        return -1;
+    }
+
+    if (res != 0) {
+        fd_set writefds;
+        struct timeval tv = { .tv_sec = timeout_sec, .tv_usec = 0 };
+        
+        FD_ZERO(&writefds);
+        FD_SET(sockfd, &writefds);
+
+        res = select(sockfd + 1, NULL, &writefds, NULL, &tv);
+        
+        if (res <= 0) return res; // 0 - timout, -1 - error
+
+        int so_error;
+        socklen_t len = sizeof(so_error);
+        getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &so_error, &len);
+        if (so_error != 0) {
+            errno = so_error;
+            return -1;
+        }
+    }
+
+    fcntl(sockfd, F_SETFL, flags);
+    return res;
+}
+// LCOV_EXCL_STOP
+
+int create_tcp_socket(struct vec hostname, const char* service, int timeout_sec) {
     struct addrinfo hints, *addrinfo_result;
     int status;
-    
+
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -555,7 +590,7 @@ int create_tcp_socket(struct vec hostname, const char* service) {
 			continue;
 		}
 
-        int ok = connect(sockfd, p->ai_addr, p->ai_addrlen);
+        int ok = connect_with_timeout(sockfd, p->ai_addr, p->ai_addrlen, timeout_sec);
 		if (ok == -1) {
 			close(sockfd);
             sockfd = -1;
@@ -603,7 +638,7 @@ int download_http(struct vec url, int timeout_sec, struct HttpPage* out) {
     struct vec content_vec = vec_alloc(0);
 
     if (vec_eq(up.protocol, "http://") || up.protocol.size == 0) {
-        sockfd = create_tcp_socket(up.host, "80");
+        sockfd = create_tcp_socket(up.host, "80", timeout_sec);
 
         // --- Send request ---
         int bytes_sent = send(sockfd, request, strlen(request), 0);
@@ -613,7 +648,7 @@ int download_http(struct vec url, int timeout_sec, struct HttpPage* out) {
             parse_http_stream_chunk(recv_buff, bytes_received, &headers_vec, &content_vec, &content_started);
         }
     } else if (vec_eq(up.protocol, "https://")) {
-        sockfd = create_tcp_socket(up.host, "443");
+        sockfd = create_tcp_socket(up.host, "443", timeout_sec);
 
         SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
         if (!ctx) {
