@@ -27,7 +27,7 @@ static int test_func_i = 0;
 void run_tests() {
     for (int i = 0; i < TESTS_MAX_COUNT; i++) {
         if (tests_ptrs[i] != NULL) {
-            printf("--> %s\t", tests_names[i]);
+            printf("--> (%d) %s\t", i, tests_names[i]);
             fflush(0);
             tests_ptrs[i]();
             printf("✓\n");

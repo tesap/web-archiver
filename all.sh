@@ -2,10 +2,11 @@
 
 OUT=res
 EXEC_OUT=../out
-START_URL=archlinux.org
+# START_URL=archlinux.org
 # START_URL=https://doc.rust-lang.org/stable/rustc/index.html
+START_URL=https://wikipedia.org/
 
-CRAWL_DEPTH=1
+CRAWL_DEPTH=2
 REQUEST_PERIOD=1000
 REQUEST_TIMEOUT=3000
 
@@ -20,14 +21,13 @@ if [[ ! -f urls.txt ]]; then
         -a $START_URL
         -d $CRAWL_DEPTH
         -p $REQUEST_PERIOD
-        --cache-ttl $CACHE_TTL
+        # --cache-ttl $CACHE_TTL
         --filter-same-domain
         --save > urls.txt"
     $EXEC_OUT/hrefs_crawler \
         -a $START_URL \
         -d $CRAWL_DEPTH \
         -p $REQUEST_PERIOD \
-        --cache-ttl $CACHE_TTL \
         --filter-same-domain \
         --save > urls.txt
 fi

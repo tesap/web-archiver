@@ -3,9 +3,11 @@ OUT=out
 DEPS=-lssl \
      -lcrypto
 FLAGS=-g \
+      -O3 \
       -Isrc \
       -Isrc/util \
       -Isrc/hrefs_crawler \
+      -Isrc/links_replacer \
       -Wreturn-type ${DEPS} \
       -DDEFAULT_DEPTH_LEVEL=1 \
       -DDEFAULT_REQUEST_PERIOD=50 \
@@ -16,8 +18,7 @@ FLAGS=-g \
 
 COVERAGE_FLAGS=-fprofile-arcs \
                -ftest-coverage \
-               -O0 
-# TESTS_FLAGS=-Wl,--wrap=/0
+               -O0
 
 # GCC=../tinycc/tcc
 # GCC=tcc
@@ -34,14 +35,14 @@ clean:
 ${OUT}/hrefs_crawler: src/hrefs_crawler/hrefs_crawler.c src/hrefs_crawler/main.c src/util.c | ${OUT}
 	${GCC} ${FLAGS} $^ -o $@
 
-${OUT}/cached_curl: src/cached_curl.c src/util.c | ${OUT}
+${OUT}/cached_curl: src/cached_curl/main.c src/util.c | ${OUT}
 	${GCC} ${FLAGS} $^ -o $@
     
-${OUT}/links_replacer: src/links_replacer.c src/util.c | ${OUT}
+${OUT}/links_replacer: src/links_replacer/links_replacer.c src/links_replacer/main.c src/util.c | ${OUT}
 	${GCC} ${FLAGS} $^ -o $@
     
-${OUT}/tests: tests/tests.c src/hrefs_crawler/hrefs_crawler.c src/util.c | ${OUT} ${OUT}/tests/files
-	${GCC} ${FLAGS} ${COVERAGE_FLAGS} $^ -o $@
+${OUT}/tests: tests/tests.c src/hrefs_crawler/hrefs_crawler.c src/links_replacer/links_replacer.c src/util.c | ${OUT} ${OUT}/tests/files
+	${GCC} ${FLAGS} ${TESTS_FLAGS} ${COVERAGE_FLAGS} $^ -o $@
 
 ${OUT}/tests/files: tests/files
 	ln -sf ../tests/files ${OUT}/

@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "util.h"
+#include "links_replacer.h"
 
 struct cmd_args {
     const char* file_path;

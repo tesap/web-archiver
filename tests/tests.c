@@ -18,6 +18,7 @@
 #include "tests_common.h"
 #include "util.h"
 #include "hrefs_crawler.h"
+#include "links_replacer.h"
 
 /*
  * TODO tests for functions to add:
