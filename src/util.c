@@ -574,7 +574,6 @@ int create_tcp_socket(struct vec hostname, const char* service, int timeout_sec)
 
     char _hostname[256];
     vec_to_cstr(hostname, _hostname);
-        fprintf(stderr, "TEST: %s, %s\n", _hostname, service);
     int rv = getaddrinfo(_hostname, service, &hints, &addrinfo_result);
     if (rv != 0) {
         fprintf(stderr, "=== getaddrinfo: %s, %s, %s\n", _hostname, service, gai_strerror(rv));
