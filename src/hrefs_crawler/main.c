@@ -181,6 +181,8 @@ void crawl_urls(struct vec url, int depth_level) {
             on_found_url_callback,
             &ctx
         );
+    } else {
+        exit(res);
     }
 
     // Page was downloaded from network

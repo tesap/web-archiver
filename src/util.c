@@ -574,9 +574,10 @@ int create_tcp_socket(struct vec hostname, const char* service, int timeout_sec)
 
     char _hostname[256];
     vec_to_cstr(hostname, _hostname);
+        fprintf(stderr, "TEST: %s, %s\n", _hostname, service);
     int rv = getaddrinfo(_hostname, service, &hints, &addrinfo_result);
     if (rv != 0) {
-        fprintf(stderr, "=== getaddrinfo: %s\n", gai_strerror(rv));
+        fprintf(stderr, "=== getaddrinfo: %s, %s, %s\n", _hostname, service, gai_strerror(rv));
         return -1;
     }
 
@@ -726,9 +727,15 @@ int download_http(struct vec url, int timeout_sec, struct HttpPage* out) {
         }
         return 0;
     } else {
+        fprintf(stderr, "> %s\n", request);
         fprintf(stderr, "> %.*s\n", headers_vec.size, headers_vec.ptr);
         fprintf(stderr, "=== Bad status_code: %d\n", status_code);
-        write_file("err.http", headers_vec.ptr, headers_vec.size);
+        write_file("err-headers.http", headers_vec.ptr, headers_vec.size);
+        write_file("err-request.http", request, strlen(request));
+        write_file("err-content.http", content_vec.ptr, content_vec.size);
+        if (status_code == 429) { // Too many requests
+            return 2;
+        }
         return -1;
     }
 }
@@ -1011,7 +1018,8 @@ int cached_download_http(struct vec url, int request_timeout, int is_save, int c
     time_t mtime = file_mtime(url_path);
 
     if (file_exists(url_path) && cache_ttl * 60 >= (cur_time - mtime)) {
-        fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit: %.*s (file: %.*s)\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path.size, url_path.ptr);
+        // fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit: %.*s (file: %.*s)\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path.size, url_path.ptr);
+        fprintf(stderr, ANSI_COLOR_GREEN "==== Cache hit : %.*s\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path.size, url_path.ptr);
         char* buff;
         vec_terminate(&url_path);
         int size = read_file(url_path.ptr, &buff);
@@ -1023,7 +1031,8 @@ int cached_download_http(struct vec url, int request_timeout, int is_save, int c
         return 1;
     }
 
-    fprintf(stderr, ANSI_COLOR_YELLOW "==== Cache miss: %.*s\n\t(file: %s)\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path);
+    // fprintf(stderr, ANSI_COLOR_YELLOW "==== Cache miss: %.*s\n\t(file: %s)\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path);
+    fprintf(stderr, ANSI_COLOR_YELLOW "==== Cache miss: %.*s\n" ANSI_COLOR_RESET, url.size, url.ptr, url_path);
 
     int res = download_http(url, request_timeout / 1000, out);
     if (res == 0) {

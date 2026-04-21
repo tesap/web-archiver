@@ -68,7 +68,7 @@ void replace_links(struct vec data, struct vec page_hint, FILE* fout) {
         );
 
         fprintf(fout, "%.*s", relpath_.size, relpath_.ptr);
-        fprintf(stderr, ANSI_COLOR_GREEN "2-> %.*s\n" ANSI_COLOR_RESET, relpath_.size, relpath_.ptr);
+        // fprintf(stderr, ANSI_COLOR_GREEN "2-> %.*s\n" ANSI_COLOR_RESET, relpath_.size, relpath_.ptr);
 
         ptr = t.link.ptr + t.link.size;
     }

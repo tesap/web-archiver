@@ -27,7 +27,7 @@ GCC=gcc
 
 .PHONY: ${OUT} clean
 
-all: ${OUT}/cached_curl ${OUT}/hrefs_crawler ${OUT}/links_replacer ${OUT}/tests
+all: ${OUT}/cached_curl ${OUT}/hrefs_crawler ${OUT}/links_replacer ${OUT}/master ${OUT}/master-select ${OUT}/client ${OUT}/tests
 
 clean:
 	rm -rf ${OUT}
@@ -39,6 +39,15 @@ ${OUT}/cached_curl: src/cached_curl/main.c src/util.c | ${OUT}
 	${GCC} ${FLAGS} $^ -o $@
     
 ${OUT}/links_replacer: src/links_replacer/links_replacer.c src/links_replacer/main.c src/util.c | ${OUT}
+	${GCC} ${FLAGS} $^ -o $@
+
+${OUT}/master: src/master/main.c src/util.c | ${OUT}
+	${GCC} ${FLAGS} $^ -o $@
+
+${OUT}/master-select: src/master/main-select.c src/util.c | ${OUT}
+	${GCC} ${FLAGS} $^ -o $@
+
+${OUT}/client: src/master/client.c src/util.c | ${OUT}
 	${GCC} ${FLAGS} $^ -o $@
     
 ${OUT}/tests: tests/tests.c src/hrefs_crawler/hrefs_crawler.c src/links_replacer/links_replacer.c src/util.c | ${OUT} ${OUT}/tests/files
